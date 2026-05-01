@@ -1,4 +1,31 @@
 import { describe, it, expect, vi } from "vitest";
+
+vi.mock("./uniswapClients", () => ({
+  uniswapStrategies: () => ({ tradingApi: {}, directV3: {} }),
+  publicClientFor: () => ({} as any),
+}));
+vi.mock("./intentRegistry", async (importOriginal) => {
+  const original = await importOriginal<typeof import("./intentRegistry")>();
+  return {
+    ...original,
+    getIntentSchema: async (id: string) => {
+      if (id === "uniswap.swap") return { intent: "uniswap.swap", widget: "swap-summary", slot: "flow", verb: "swap", description: "", fields: [], connectors: {} };
+      return original.getIntentSchema(id);
+    },
+  };
+});
+vi.mock("@plugins/uniswap/prepare", () => ({
+  prepareSwap: vi.fn().mockResolvedValue({
+    config: { chainId: 8453, swapper: "0x000000000000000000000000000000000000bEEF", tokenIn: "0x0000000000000000000000000000000000000000", tokenOut: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", assetIn: "ETH", assetOut: "USDC", amountIn: "100000000000000", slippageBps: 50, strategyTag: "trading-api" },
+    initialQuote: { amountIn: "100000000000000", amountOut: "0", amountOutMin: "0", rate: "", route: "", expiresAt: Date.now()+30000, raw: {} },
+    initialQuoteAt: Date.now(),
+    approvalCall: null,
+    balance: "1.0",
+    insufficient: false,
+    keeperOffers: [],
+  }),
+}));
+
 import { dispatchIntent } from "./intentDispatch";
 
 const fakePublicClient = {
@@ -54,5 +81,13 @@ describe("dispatchIntent", () => {
         publicClient: fakePublicClient,
       }),
     ).rejects.toThrow(/amount/i);
+  });
+
+  it("dispatches uniswap.swap → swap-summary widget", async () => {
+    const out = await dispatchIntent("uniswap.swap", {
+      body: { amount: "0.0001", assetIn: "ETH", assetOut: "USDC", chain: "base", address: "0x000000000000000000000000000000000000bEEF" },
+      publicClient: {} as any,
+    });
+    expect(out.widget.type).toBe("swap-summary");
   });
 });
