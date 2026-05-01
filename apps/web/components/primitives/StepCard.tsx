@@ -1,31 +1,51 @@
 import type { ReactNode } from "react";
 
-export type StepPhase = "locked" | "in-progress" | "complete";
+export type StepPhase = "in-progress" | "locked" | "complete";
 
 export type StepCardProps = {
   step: string;
   title: string;
   status?: string;
+  onEdit?: () => void;
   sub?: string;
   phase?: StepPhase;
   children?: ReactNode;
 };
 
-export function StepCard({ step, title, status, sub, phase = "in-progress", children }: StepCardProps) {
-  const lockedCls = phase === "locked" ? "opacity-50 pointer-events-none" : "";
+export function StepCard({
+  step, title, status, onEdit, sub, phase = "in-progress", children,
+}: StepCardProps) {
+  const locked = phase === "locked";
   return (
     <section
-      className={`mt-5 rounded-lg bg-surface border border-rule shadow-[0_2px_8px_var(--shadow)] p-6 ${lockedCls}`}
+      className={[
+        "relative animate-fadeUp",
+        "bg-surface border-2 border-ink rounded-2xl shadow-card",
+        "px-6 pt-5 pb-[22px]",
+        locked ? "opacity-[0.92]" : "",
+      ].join(" ")}
     >
-      <header className="flex items-baseline gap-3">
-        <span className="text-[11px] tracking-[0.18em] font-mono uppercase text-ink-3">{step}</span>
-        <h2 className="text-xl font-semibold text-ink flex-1">{title}</h2>
-        {status && (
-          <span className="text-xs px-2 py-0.5 rounded-pill bg-warn-2 text-ink-2">{status}</span>
-        )}
+      <header className="flex items-baseline gap-3 mb-1">
+        <span className="font-mono text-[10.5px] tracking-[0.1em] font-medium bg-bg-2 text-ink border-[1.5px] border-ink rounded-[5px] px-[7px] py-[3px] flex-shrink-0">
+          {step}
+        </span>
+        <h2 className="font-hand text-[32px] font-bold leading-[1.1] flex-1 text-ink">{title}</h2>
+        {locked && onEdit ? (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="text-xs text-ink-2 border-[1.5px] border-ink rounded-pill px-3 py-1 bg-bg hover:bg-accent-2"
+          >
+            edit ✎
+          </button>
+        ) : status ? (
+          <span className="text-xs text-ink-3 italic flex-shrink-0">{status}</span>
+        ) : null}
       </header>
-      {sub && <p className="text-[13.5px] text-ink-2 mt-1 mb-3">{sub}</p>}
-      <div>{children}</div>
+      {sub && <p className="text-[13.5px] text-ink-2 mt-1 mb-[14px]">{sub}</p>}
+      <div className={["step-body", locked ? "pointer-events-none" : ""].join(" ")}>
+        {children}
+      </div>
     </section>
   );
 }

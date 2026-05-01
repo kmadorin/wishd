@@ -13,9 +13,11 @@ export default function Page() {
         <span className="text-sm text-ink-2">defi by wishing it</span>
         <ConnectBadge />
       </header>
-      <WishComposer />
+      <div className="flex flex-col gap-6">
+        <WishComposer />
+        <StepStack />
+      </div>
       <ChatBubble />
-      <StepStack />
     </main>
   );
 }
