@@ -3,7 +3,6 @@
   "timestamp": "2026-05-01T00:00:00.000Z",
   "version": { "major": 0, "minor": 0, "patch": 1 },
   "tags": {},
-  "logoURI": "",
   "keywords": ["wishd", "sepolia", "testnet"],
   "tokens": [
     {
