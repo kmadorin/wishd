@@ -42,7 +42,7 @@ export function proposeDelegation(args: {
       if (!bound) continue; // not in allowlist
       const period: SpendPeriod = bound.periods.includes(sug.period)
         ? sug.period
-        : (out.get(sug.token)?.period ?? bound.periods[0]);
+        : (out.get(sug.token)?.period ?? bound.periods[0] ?? "month");
       const limit = sug.limit > bound.maxLimit ? bound.maxLimit : sug.limit < 0n ? 0n : sug.limit;
       out.set(sug.token, { token: sug.token, limit, period });
     }
