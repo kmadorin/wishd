@@ -7,6 +7,11 @@ import { StepCard } from "@/components/primitives/StepCard";
 const STEP_LABELS: Record<string, { step: string; title: string; sub?: string }> = {
   "compound-summary": { step: "STEP 02", title: "your supply, materialized", sub: "review and execute" },
   "compound-execute": { step: "STEP 03", title: "execute", sub: "native · don't close the tab" },
+  "compound-withdraw-summary": {
+    step: "STEP 02",
+    title: "your withdraw, materialized",
+    sub: "review and execute",
+  },
 };
 
 export function StepStack() {

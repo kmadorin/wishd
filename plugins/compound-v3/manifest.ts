@@ -6,8 +6,8 @@ export const manifest: Manifest = {
   chains: [11155111],
   trust: "verified",
   provides: {
-    intents: ["deposit", "lend", "supply"],
-    widgets: ["compound-summary", "compound-execute"],
+    intents: ["deposit", "lend", "supply", "withdraw", "redeem"],
+    widgets: ["compound-summary", "compound-execute", "compound-withdraw-summary"],
     mcps: ["compound"],
   },
 };

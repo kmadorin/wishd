@@ -6,13 +6,14 @@ import { useWorkspace } from "@/store/workspace";
 import { startStream } from "./EventStream";
 import { StepCard } from "@/components/primitives/StepCard";
 
-const ACTIONS = [
-  { id: "lend", label: "lend", enabled: true },
-  { id: "swap", label: "swap", enabled: false },
-  { id: "borrow", label: "borrow", enabled: false },
-  { id: "earn", label: "earn", enabled: false },
-  { id: "bridge", label: "bridge", enabled: false },
-  { id: "find-vault", label: "find vault", enabled: false },
+const ACTIONS: Array<{ id: string; label: string; enabled: boolean; prompt: string }> = [
+  { id: "lend", label: "lend", enabled: true, prompt: "I want to lend 10 USDC into Compound on Sepolia." },
+  { id: "withdraw", label: "withdraw", enabled: true, prompt: "I want to withdraw 5 USDC from Compound on Sepolia." },
+  { id: "swap", label: "swap", enabled: false, prompt: "" },
+  { id: "borrow", label: "borrow", enabled: false, prompt: "" },
+  { id: "earn", label: "earn", enabled: false, prompt: "" },
+  { id: "bridge", label: "bridge", enabled: false, prompt: "" },
+  { id: "find-vault", label: "find vault", enabled: false, prompt: "" },
 ];
 
 export function WishComposer() {
@@ -59,7 +60,7 @@ export function WishComposer() {
             key={a.id}
             type="button"
             disabled={!a.enabled || busy}
-            onClick={() => submit(`I want to ${a.id} 10 USDC into Compound on Sepolia.`)}
+            onClick={() => submit(a.prompt)}
             title={a.enabled ? "" : "coming soon"}
             className={`px-3 py-1 rounded-pill text-sm font-medium border ${
               a.enabled

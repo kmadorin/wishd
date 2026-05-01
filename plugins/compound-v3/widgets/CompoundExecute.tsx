@@ -29,7 +29,9 @@ export type CompoundExecuteProps = {
   comet: Address;
   usdc: Address;
   calls: Array<{ to: Address; data: `0x${string}`; value: `0x${string}` }>;
-  needsApprove: boolean;
+  needsApprove?: boolean;
+  /** "deposit" (default) or "withdraw" — drives button label and confirmed message. */
+  actionKind?: "deposit" | "withdraw";
 };
 
 export function CompoundExecute(props: CompoundExecuteProps) {
@@ -99,14 +101,17 @@ export function CompoundExecute(props: CompoundExecuteProps) {
   }
 
   const txHash = callsStatus.data?.receipts?.[callsStatus.data.receipts.length - 1]?.transactionHash;
+  const kind = props.actionKind ?? "deposit";
+  const confirmedMsg =
+    kind === "withdraw"
+      ? `withdrew ${props.amount} ${props.asset} from ${props.market}`
+      : `deposited ${props.amount} ${props.asset} into ${props.market}`;
 
   return (
     <div>
       {phase === "confirmed" && txHash ? (
         <div className="rounded-sm bg-mint-2 border border-mint p-4 text-sm">
-          <div className="font-semibold text-ink">
-            deposited {props.amount} {props.asset} into {props.market}
-          </div>
+          <div className="font-semibold text-ink">{confirmedMsg}</div>
           <a
             className="text-accent underline mt-2 inline-block font-mono text-xs"
             href={`https://sepolia.etherscan.io/tx/${txHash}`}
@@ -123,7 +128,7 @@ export function CompoundExecute(props: CompoundExecuteProps) {
           disabled={phase === "submitting"}
           className="w-full rounded-pill bg-accent text-ink py-3 font-semibold hover:bg-accent-2 disabled:opacity-50"
         >
-          {labelFor(phase, props.needsApprove)}
+          {labelFor(phase, kind, props.needsApprove ?? false)}
         </button>
       )}
       {phase === "error" && errMsg && (
@@ -133,13 +138,14 @@ export function CompoundExecute(props: CompoundExecuteProps) {
   );
 }
 
-function labelFor(p: Phase, needsApprove: boolean): string {
+function labelFor(p: Phase, kind: "deposit" | "withdraw", needsApprove: boolean): string {
   switch (p) {
     case "connect":
       return "Connect Wallet";
     case "switch-chain":
       return "Switch Network";
     case "ready":
+      if (kind === "withdraw") return "Withdraw";
       return needsApprove ? "Approve & Deposit" : "Deposit";
     case "submitting":
       return "Submitting…";

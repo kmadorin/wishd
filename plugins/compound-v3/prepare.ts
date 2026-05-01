@@ -101,3 +101,65 @@ export async function prepareDeposit(input: PrepareDepositInput): Promise<Prepar
     },
   };
 }
+
+export type PreparedWithdraw = {
+  calls: PreparedCall[];
+  meta: {
+    amountWei: `0x${string}`;
+    asset: "USDC";
+    market: "cUSDCv3";
+    chainId: number;
+    user: Address;
+    suppliedWei: `0x${string}`;
+    supplied: string;
+    insufficient: boolean;
+  };
+};
+
+export type PrepareWithdrawInput = PrepareDepositInput;
+
+export async function prepareWithdraw(input: PrepareWithdrawInput): Promise<PreparedWithdraw> {
+  const { amount, user, chainId, publicClient } = input;
+
+  if (!SUPPORTED_CHAINS.includes(chainId as 11155111)) {
+    throw new Error(`unsupported chain: ${chainId}`);
+  }
+
+  const addrs = COMPOUND_ADDRESSES[chainId]!;
+  const amountWei = parseUnits(amount, USDC_DECIMALS);
+
+  const supplied = (await publicClient.readContract({
+    address: addrs.Comet,
+    abi: cometAbi,
+    functionName: "balanceOf",
+    args: [user],
+  })) as bigint;
+
+  const insufficient = supplied < amountWei;
+
+  const calls: PreparedCall[] = [
+    {
+      to: addrs.Comet,
+      data: encodeFunctionData({
+        abi: cometAbi,
+        functionName: "withdraw",
+        args: [addrs.USDC, amountWei],
+      }),
+      value: "0x0",
+    },
+  ];
+
+  return {
+    calls,
+    meta: {
+      amountWei: toHex(amountWei),
+      asset: "USDC",
+      market: "cUSDCv3",
+      chainId,
+      user,
+      suppliedWei: toHex(supplied),
+      supplied: formatUnits(supplied, USDC_DECIMALS),
+      insufficient,
+    },
+  };
+}

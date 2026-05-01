@@ -1,7 +1,7 @@
 import { definePlugin } from "@wishd/plugin-sdk";
 import { manifest } from "./manifest";
 import { createCompoundMcp } from "./mcp/server";
-import { CompoundSummary, CompoundExecute } from "./widgets";
+import { CompoundSummary, CompoundExecute, CompoundWithdrawSummary } from "./widgets";
 
 export const compoundV3 = definePlugin({
   manifest,
@@ -11,7 +11,8 @@ export const compoundV3 = definePlugin({
   widgets: {
     "compound-summary": CompoundSummary,
     "compound-execute": CompoundExecute,
+    "compound-withdraw-summary": CompoundWithdrawSummary,
   },
 });
 
-export { CompoundSummary, CompoundExecute, manifest };
+export { CompoundSummary, CompoundExecute, CompoundWithdrawSummary, manifest };
