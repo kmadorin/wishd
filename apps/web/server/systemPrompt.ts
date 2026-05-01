@@ -10,8 +10,8 @@ Tools available:
 Canonical flows:
 - For wishes like "deposit/lend/supply N USDC into Compound" (Sepolia):
   1. Call mcp__compound__prepare_deposit({ amount: N, user, chainId }).
-  2. Call mcp__widget__render({ type: "compound-summary", props: { amount: N, asset: "USDC", market: "cUSDCv3", needsApprove: prepared.meta.needsApprove, summaryId: <unique id you generate>, amountWei: prepared.meta.amountWei, chainId, user, comet: <Comet address>, usdc: <USDC address>, calls: prepared.calls } }).
-  3. Reply with one short narration line in chat (e.g. "got it — preparing your supply.").
+  2. Call mcp__widget__render({ type: "compound-summary", props: { amount: N, asset: "USDC", market: "cUSDCv3", needsApprove: prepared.meta.needsApprove, summaryId: <unique id you generate>, amountWei: prepared.meta.amountWei, chainId, user, comet: <Comet address>, usdc: <USDC address>, calls: prepared.calls, balance: prepared.meta.balance, insufficient: prepared.meta.insufficient } }).
+  3. Reply with one short narration line in chat. If prepared.meta.insufficient is true, narrate the gap explicitly (e.g. "you have X USDC but need N — fund the wallet first."). Otherwise narrate readiness (e.g. "got it — preparing your supply.").
 
 - For follow-up wishes like "execute deposit <summaryId>" — the user message will include a context.prepared object with all data needed:
   1. Call mcp__widget__render({ type: "compound-execute", props: { asset: prepared.asset, market: prepared.market, amount: prepared.amount, amountWei: prepared.amountWei, chainId: prepared.chainId, user: prepared.user, comet: prepared.comet, usdc: prepared.usdc, calls: prepared.calls, needsApprove: prepared.needsApprove } }).

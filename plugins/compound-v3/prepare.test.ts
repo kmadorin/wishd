@@ -3,23 +3,29 @@ import { prepareDeposit } from "./prepare";
 
 const FAKE_USER = "0x0000000000000000000000000000000000000001" as const;
 
-function fakeClient(allowance: bigint) {
+function fakeClient({ allowance, balance }: { allowance: bigint; balance: bigint }) {
   return {
-    readContract: vi.fn().mockResolvedValue(allowance),
+    readContract: vi.fn().mockImplementation(async ({ functionName }: { functionName: string }) => {
+      if (functionName === "allowance") return allowance;
+      if (functionName === "balanceOf") return balance;
+      throw new Error(`unexpected fn ${functionName}`);
+    }),
   } as any;
 }
 
 describe("prepareDeposit", () => {
-  it("emits approve + supply when allowance is zero", async () => {
+  it("emits approve + supply when allowance is zero and balance is sufficient", async () => {
     const out = await prepareDeposit({
       amount: "10",
       user: FAKE_USER,
       chainId: 11155111,
-      publicClient: fakeClient(0n),
+      publicClient: fakeClient({ allowance: 0n, balance: 100_000_000n }),
     });
     expect(out.calls).toHaveLength(2);
     expect(out.meta.needsApprove).toBe(true);
+    expect(out.meta.insufficient).toBe(false);
     expect(out.meta.amountWei).toBe("0x" + (10_000_000n).toString(16));
+    expect(out.meta.balance).toBe("100");
     expect(out.meta.asset).toBe("USDC");
     expect(out.meta.market).toBe("cUSDCv3");
   });
@@ -29,10 +35,22 @@ describe("prepareDeposit", () => {
       amount: "10",
       user: FAKE_USER,
       chainId: 11155111,
-      publicClient: fakeClient(100_000_000n),
+      publicClient: fakeClient({ allowance: 100_000_000n, balance: 100_000_000n }),
     });
     expect(out.calls).toHaveLength(1);
     expect(out.meta.needsApprove).toBe(false);
+    expect(out.meta.insufficient).toBe(false);
+  });
+
+  it("flags insufficient when balance < amount", async () => {
+    const out = await prepareDeposit({
+      amount: "10",
+      user: FAKE_USER,
+      chainId: 11155111,
+      publicClient: fakeClient({ allowance: 0n, balance: 5_000_000n }),
+    });
+    expect(out.meta.insufficient).toBe(true);
+    expect(out.meta.balance).toBe("5");
   });
 
   it("throws on unsupported chain", async () => {
@@ -41,7 +59,7 @@ describe("prepareDeposit", () => {
         amount: "1",
         user: FAKE_USER,
         chainId: 1,
-        publicClient: fakeClient(0n),
+        publicClient: fakeClient({ allowance: 0n, balance: 0n }),
       }),
     ).rejects.toThrow(/unsupported chain/i);
   });

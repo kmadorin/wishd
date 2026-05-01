@@ -1,4 +1,4 @@
-import { encodeFunctionData, maxUint256, toHex, type Address, type PublicClient } from "viem";
+import { encodeFunctionData, formatUnits, maxUint256, toHex, type Address, type PublicClient } from "viem";
 import { parseUnits } from "viem";
 import { COMPOUND_ADDRESSES, SUPPORTED_CHAINS } from "./addresses";
 import { erc20Abi } from "./abis/erc20";
@@ -21,6 +21,9 @@ export type PreparedDeposit = {
     market: "cUSDCv3";
     chainId: number;
     user: Address;
+    balanceWei: `0x${string}`;
+    balance: string;
+    insufficient: boolean;
   };
 };
 
@@ -41,14 +44,23 @@ export async function prepareDeposit(input: PrepareDepositInput): Promise<Prepar
   const addrs = COMPOUND_ADDRESSES[chainId]!;
   const amountWei = parseUnits(amount, USDC_DECIMALS);
 
-  const allowance = (await publicClient.readContract({
-    address: addrs.USDC,
-    abi: erc20Abi,
-    functionName: "allowance",
-    args: [user, addrs.Comet],
-  })) as bigint;
+  const [allowance, balance] = (await Promise.all([
+    publicClient.readContract({
+      address: addrs.USDC,
+      abi: erc20Abi,
+      functionName: "allowance",
+      args: [user, addrs.Comet],
+    }),
+    publicClient.readContract({
+      address: addrs.USDC,
+      abi: erc20Abi,
+      functionName: "balanceOf",
+      args: [user],
+    }),
+  ])) as [bigint, bigint];
 
   const needsApprove = allowance < amountWei;
+  const insufficient = balance < amountWei;
 
   const calls: PreparedCall[] = [];
 
@@ -83,6 +95,9 @@ export async function prepareDeposit(input: PrepareDepositInput): Promise<Prepar
       market: "cUSDCv3",
       chainId,
       user,
+      balanceWei: toHex(balance),
+      balance: formatUnits(balance, USDC_DECIMALS),
+      insufficient,
     },
   };
 }
