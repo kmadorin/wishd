@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@wishd/plugin-sdk", "@wishd/plugin-compound-v3"],
+  transpilePackages: ["@wishd/plugin-sdk", "@wishd/plugin-compound-v3", "@wishd/tokens"],
   serverExternalPackages: ["@anthropic-ai/claude-agent-sdk", "@modelcontextprotocol/sdk"],
 };
 
