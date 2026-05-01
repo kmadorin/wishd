@@ -9,6 +9,9 @@ export default defineConfig({
       "@plugins": path.resolve(__dirname, "../../plugins"),
       "@keepers": path.resolve(__dirname, "../../keepers"),
       "@wishd/tokens": path.resolve(__dirname, "../../packages/wishd-tokens/src/index.ts"),
+      "@wishd/plugin-sdk": path.resolve(__dirname, "../../packages/plugin-sdk/src/index.ts"),
+      "@wishd/keeper-auto-compound-comp/addresses": path.resolve(__dirname, "../../keepers/auto-compound-comp/addresses.ts"),
+      "@wishd/keeper-auto-compound-comp": path.resolve(__dirname, "../../keepers/auto-compound-comp/index.ts"),
     },
   },
   test: {
