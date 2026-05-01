@@ -1,5 +1,5 @@
 import type { ServerEvent } from "@wishd/plugin-sdk";
-import { runAgent } from "../../../server/runAgent";
+import { runAgent } from "@/server/runAgent";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
