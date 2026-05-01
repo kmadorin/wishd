@@ -8,6 +8,7 @@ export default defineConfig({
     alias: {
       "@plugins": path.resolve(__dirname, "../../plugins"),
       "@keepers": path.resolve(__dirname, "../../keepers"),
+      "@wishd/tokens": path.resolve(__dirname, "../../packages/wishd-tokens/src/index.ts"),
     },
   },
   test: {
