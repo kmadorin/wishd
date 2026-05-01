@@ -32,7 +32,7 @@ export function WishComposer() {
   const [mode, setMode] = useState<"structured" | "freetext">("structured");
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const { address, chainId } = useAccount();
+  const { address, chainId, isConnected } = useAccount();
   const ws = useWorkspace();
 
   const account = {
@@ -41,6 +41,11 @@ export function WishComposer() {
   };
 
   async function submitComposer({ intent, values }: StructuredSubmit) {
+    if (!isConnected || !address) {
+      ws.reset();
+      ws.appendNarration("connect a wallet first — top right.");
+      return;
+    }
     setBusy(true);
     ws.reset();
     const skeletonId = newSkeletonId();
@@ -115,6 +120,11 @@ export function WishComposer() {
 
   async function submitFreeText(wish: string) {
     if (!wish.trim()) return;
+    if (!isConnected || !address) {
+      ws.reset();
+      ws.appendNarration("connect a wallet first — top right.");
+      return;
+    }
     setBusy(true);
     ws.reset();
     const skeletonId = newSkeletonId();
