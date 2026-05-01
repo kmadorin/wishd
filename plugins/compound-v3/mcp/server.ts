@@ -17,7 +17,7 @@ export function createCompoundMcp(ctx: PluginCtx) {
             .string()
             .regex(/^0x[a-fA-F0-9]{40}$/)
             .describe("User EOA / smart-account address"),
-          chainId: z.number().int().describe("Chain id, e.g. 11155111 for Sepolia"),
+          chainId: z.coerce.number().int().describe("Chain id, e.g. 11155111 for Sepolia"),
         },
         async (args) => {
           const prepared = await prepareDeposit({
