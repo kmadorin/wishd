@@ -95,7 +95,8 @@ export function CompoundExecute(props: CompoundExecuteProps) {
       return;
     }
     if (phase === "switch-chain") {
-      switchChain({ chainId: props.chainId });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      switchChain({ chainId: props.chainId as any });
       return;
     }
     if (phase === "approve" && approveCall) {
