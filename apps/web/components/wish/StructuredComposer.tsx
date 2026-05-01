@@ -38,11 +38,10 @@ export function StructuredComposer({ schemas, onSubmit, busy }: StructuredCompos
     setValues((s) => ({ ...s, [key]: v }));
   }
 
+  const missingRequired = !schema || schema.fields.some((f) => f.required && !values[f.key]);
+
   function submit() {
-    if (!schema) return;
-    for (const f of schema.fields) {
-      if (f.required && !values[f.key]) return;
-    }
+    if (!schema || missingRequired) return;
     onSubmit({ intent: schema.intent, values });
   }
 
@@ -73,7 +72,7 @@ export function StructuredComposer({ schemas, onSubmit, busy }: StructuredCompos
       ))}
       <button
         type="submit"
-        disabled={busy || !schema}
+        disabled={busy || missingRequired}
         className="ml-auto rounded-pill bg-accent text-ink px-4 py-2 font-semibold hover:bg-accent-2 disabled:opacity-50"
       >
         {busy ? "…" : "looks good →"}
