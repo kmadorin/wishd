@@ -25,6 +25,10 @@ describe("getToken", () => {
     expect(token?.chainId).toBe(8453);
   });
 
+  it("returns Base DAI from upstream (upstream coverage sanity)", () => {
+    expect(getToken(8453, "DAI")).toBeDefined();
+  });
+
   it("returns undefined for non-existent token", () => {
     expect(getToken(1, "DOES_NOT_EXIST")).toBeUndefined();
   });
