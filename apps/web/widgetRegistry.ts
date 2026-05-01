@@ -1,8 +1,9 @@
 import type { ComponentType } from "react";
-import { compoundV3 } from "@wishd/plugin-compound-v3";
+import { CompoundSummary, CompoundExecute } from "@wishd/plugin-compound-v3/widgets";
 
 export const widgetRegistry: Record<string, ComponentType<any>> = {
-  ...compoundV3.widgets,
+  "compound-summary": CompoundSummary,
+  "compound-execute": CompoundExecute,
 };
 
 export function getWidget(type: string): ComponentType<any> | undefined {
