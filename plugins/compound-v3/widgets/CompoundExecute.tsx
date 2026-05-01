@@ -10,6 +10,10 @@ import {
   useConnectors,
 } from "wagmi";
 import type { Address } from "viem";
+import { ExecuteTimeline } from "../../../apps/web/components/primitives/ExecuteTimeline";
+import { mapCompoundExec } from "../../../apps/web/lib/execPhase";
+import { SuccessCard } from "../../../apps/web/components/primitives/SuccessCard";
+import { useWorkspace } from "../../../apps/web/store/workspace";
 
 type Phase =
   | "connect"
@@ -48,6 +52,7 @@ export function CompoundExecute(props: CompoundExecuteProps) {
     reset: resetSend,
   } = useSendCalls();
   const callsStatus = useWaitForCallsStatus({ id: sendData?.id });
+  const reset = useWorkspace((s) => s.reset);
 
   const [phase, setPhase] = useState<Phase>("ready");
   const [errMsg, setErrMsg] = useState<string | null>(null);
@@ -130,30 +135,66 @@ export function CompoundExecute(props: CompoundExecuteProps) {
       ? `withdrew ${props.amount} ${props.asset} from ${props.market}`
       : `deposited ${props.amount} ${props.asset} into ${props.market}`;
 
+  if (phase === "confirmed" && txHash) {
+    const isWithdraw = kind === "withdraw";
+    return (
+      <SuccessCard
+        title={isWithdraw ? "withdraw complete ✦" : "supply complete ✦"}
+        sub={isWithdraw
+          ? `withdrew ${props.amount} ${props.asset} from ${props.market}`
+          : `earning yield on ${props.amount} ${props.asset} via ${props.market}`}
+        summary={[
+          { k: isWithdraw ? "withdrew" : "supplied", v: `${props.amount} ${props.asset}` },
+          { k: "market", v: props.market },
+          { k: "tx", v: <a className="underline" target="_blank" rel="noreferrer"
+              href={`https://sepolia.etherscan.io/tx/${txHash}`}>
+              {txHash.slice(0,10)}…{txHash.slice(-8)}
+            </a> },
+        ]}
+        keeperOffers={isWithdraw ? [] : [
+          { id: "auto-compound", badge: "KEEPERHUB", featured: true,
+            title: "Auto-compound yield",
+            desc: "claim and re-supply rewards weekly. uses session permissions.",
+            comingSoon: true },
+        ]}
+        primaryAction={{
+          label: "make another wish",
+          onClick: () => reset(),
+        }}
+        secondaryAction={{
+          label: "view portfolio",
+          onClick: () => alert("portfolio coming soon"),
+        }}
+      />
+    );
+  }
+
+  const steps = mapCompoundExec({
+    phase,
+    needsApprove: props.needsApprove ?? false,
+    txHash,
+    errMsg: errMsg ?? undefined,
+  });
+
+  const ctaLabel = (() => {
+    switch (phase) {
+      case "connect": return "Connect Wallet";
+      case "switch-chain": return "Switch Network";
+      case "ready":
+        if (kind === "withdraw") return "Withdraw";
+        return (props.needsApprove ?? false) ? "Approve & Deposit" : "Deposit";
+      case "submitting": return "Submitting…";
+      case "error": return "Retry";
+      default: return "Execute";
+    }
+  })();
+
   return (
     <div>
-      {phase === "confirmed" && txHash ? (
-        <div className="rounded-sm bg-mint-2 border border-mint p-4 text-sm">
-          <div className="font-semibold text-ink">{confirmedMsg}</div>
-          <a
-            className="text-accent underline mt-2 inline-block font-mono text-xs"
-            href={`https://sepolia.etherscan.io/tx/${txHash}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {txHash.slice(0, 10)}…{txHash.slice(-8)}
-          </a>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={onClick}
-          disabled={phase === "submitting"}
-          className="w-full rounded-pill bg-accent text-ink py-3 font-semibold hover:bg-accent-2 disabled:opacity-50"
-        >
-          {labelFor(phase, kind, props.needsApprove ?? false)}
-        </button>
-      )}
+      <ExecuteTimeline
+        steps={steps}
+        cta={{ label: ctaLabel, onClick, disabled: phase === "submitting" }}
+      />
       {phase === "error" && errMsg && (
         <p className="mt-2 text-xs text-bad break-all">{errMsg}</p>
       )}
@@ -213,22 +254,4 @@ function friendlyError(err: Error): string {
     return "insufficient ETH for gas — fund this wallet on Sepolia and retry";
   }
   return msg.length > 200 ? msg.slice(0, 200) + "…" : msg;
-}
-
-function labelFor(p: Phase, kind: "deposit" | "withdraw", needsApprove: boolean): string {
-  switch (p) {
-    case "connect":
-      return "Connect Wallet";
-    case "switch-chain":
-      return "Switch Network";
-    case "ready":
-      if (kind === "withdraw") return "Withdraw";
-      return needsApprove ? "Approve & Deposit" : "Deposit";
-    case "submitting":
-      return "Submitting…";
-    case "confirmed":
-      return "Confirmed";
-    case "error":
-      return "Retry";
-  }
 }

@@ -1,11 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAccount } from "wagmi";
+import { renderSentenceParts, type IntentField, type IntentSchema } from "@wishd/plugin-sdk";
 import { useWorkspace } from "@/store/workspace";
 import { startStream } from "./EventStream";
 import { StepCard } from "@/components/primitives/StepCard";
-import { StructuredComposer, type StructuredSubmit } from "./StructuredComposer";
+import { ActionPill, type ActionPillOption, type ActionPillVariant } from "@/components/primitives/ActionPill";
+import {
+  SentenceBox,
+  SentenceConnector,
+  SentencePrefix,
+} from "@/components/primitives/SentenceBox";
 import { CLIENT_INTENT_SCHEMAS } from "@/lib/intentRegistry.client";
 import { prepareIntent, PrepareError } from "@/lib/prepareIntent";
 
@@ -28,10 +34,25 @@ function newSkeletonId(): string {
   return `s_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function defaultsFor(schema: IntentSchema): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const f of schema.fields) out[f.key] = "default" in f && f.default != null ? f.default : "";
+  return out;
+}
+
 export function WishComposer() {
   const [mode, setMode] = useState<"structured" | "freetext">("structured");
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [intentId, setIntentId] = useState(CLIENT_INTENT_SCHEMAS[0]?.intent ?? "");
+  const schema = useMemo(
+    () => CLIENT_INTENT_SCHEMAS.find((s) => s.intent === intentId),
+    [intentId],
+  );
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    CLIENT_INTENT_SCHEMAS[0] ? defaultsFor(CLIENT_INTENT_SCHEMAS[0]) : {},
+  );
+  const [openPillKey, setOpenPillKey] = useState<string | null>(null);
   const { address, chainId, isConnected } = useAccount();
   const ws = useWorkspace();
 
@@ -40,7 +61,35 @@ export function WishComposer() {
     chainId: chainId ?? 11155111,
   };
 
-  async function submitComposer({ intent, values }: StructuredSubmit) {
+  useEffect(() => {
+    function closeOnOutsideMouseDown(e: MouseEvent) {
+      if (!openPillKey) return;
+      const target = e.target;
+      if (
+        target instanceof Element &&
+        target.closest('[role="menu"], button[aria-haspopup="menu"]')
+      ) {
+        return;
+      }
+      setOpenPillKey(null);
+    }
+
+    document.addEventListener("mousedown", closeOnOutsideMouseDown);
+    return () => document.removeEventListener("mousedown", closeOnOutsideMouseDown);
+  }, [openPillKey]);
+
+  function pickSchema(id: string) {
+    const next = CLIENT_INTENT_SCHEMAS.find((s) => s.intent === id);
+    setIntentId(id);
+    setValues(next ? defaultsFor(next) : {});
+    setOpenPillKey(null);
+  }
+
+  function setField(key: string, v: string) {
+    setValues((s) => ({ ...s, [key]: v }));
+  }
+
+  async function submitStructuredWith(s: IntentSchema, vs: Record<string, string>) {
     if (!isConnected || !address) {
       ws.reset();
       ws.appendNarration("connect a wallet first — top right.");
@@ -49,58 +98,22 @@ export function WishComposer() {
     setBusy(true);
     ws.reset();
     const skeletonId = newSkeletonId();
-    const schema = CLIENT_INTENT_SCHEMAS.find((s) => s.intent === intent);
     ws.appendSkeleton({
       id: skeletonId,
-      widgetType: schema?.widget ?? "compound-summary",
-      amount: values.amount,
-      asset: values.asset,
+      widgetType: s.widget,
+      amount: vs.amount,
+      asset: vs.asset,
     });
     console.info(
-      JSON.stringify({ tag: "wishd:perf", event: "composer-submit", intent, t: Date.now() }),
+      JSON.stringify({ tag: "wishd:perf", event: "composer-submit", intent: s.intent, t: Date.now() }),
     );
 
-    const t0 = performance.now();
-    const timer = setTimeout(() => {
-      ws.failSkeleton(skeletonId, "preparation timed out — retry?");
-    }, SKELETON_TIMEOUT_MS);
-
-    const fastPath = (async () => {
-      try {
-        const out = await prepareIntent(intent, { ...values, address: account.address });
-        clearTimeout(timer);
-        ws.hydrateSkeleton(skeletonId, {
-          id: out.widget.id,
-          type: out.widget.type,
-          slot: out.widget.slot,
-          props: out.widget.props,
-        });
-        console.info(
-          JSON.stringify({
-            tag: "wishd:perf",
-            event: "skeleton-to-hydrate-ms",
-            intent,
-            ms: Math.round(performance.now() - t0),
-          }),
-        );
-      } catch (err) {
-        clearTimeout(timer);
-        const msg =
-          err instanceof PrepareError
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : "unknown error";
-        ws.failSkeleton(skeletonId, msg);
-      }
-    })();
-
-    const narration = (async () => {
+    void (async () => {
       try {
         await startStream({
-          wish: phrase(intent, values),
+          wish: phrase(s, vs),
           account,
-          context: { mode: "narrate-only", intent, values },
+          context: { mode: "narrate-only", intent: s.intent, values: vs },
           onEvent: (e) => {
             if (e.type === "chat.delta") ws.appendNarration(e.delta);
             if (e.type === "ui.patch") ws.patchWidget(e.id, e.props);
@@ -114,8 +127,57 @@ export function WishComposer() {
       }
     })();
 
-    await Promise.allSettled([fastPath, narration]);
-    setBusy(false);
+    const t0 = performance.now();
+    const controller = new AbortController();
+    let timedOut = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+        ws.failSkeleton(skeletonId, "preparation timed out — retry?");
+        reject(new Error("preparation timed out"));
+      }, SKELETON_TIMEOUT_MS);
+    });
+
+    try {
+      const out = await Promise.race([
+        prepareIntent(s.intent, { ...vs, address: account.address }, { signal: controller.signal }),
+        timeout,
+      ]);
+      if (timedOut) return;
+      ws.hydrateSkeleton(skeletonId, {
+        id: out.widget.id,
+        type: out.widget.type,
+        slot: out.widget.slot,
+        props: out.widget.props,
+      });
+      console.info(
+        JSON.stringify({
+          tag: "wishd:perf",
+          event: "skeleton-to-hydrate-ms",
+          intent: s.intent,
+          ms: Math.round(performance.now() - t0),
+        }),
+      );
+    } catch (err) {
+      if (timedOut || (err instanceof Error && err.name === "AbortError")) return;
+      const msg =
+        err instanceof PrepareError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "unknown error";
+      ws.failSkeleton(skeletonId, msg);
+    } finally {
+      if (timer) clearTimeout(timer);
+      setBusy(false);
+    }
+  }
+
+  function submitStructured() {
+    if (!schema || hasMissingRequired(schema, values)) return;
+    submitStructuredWith(schema, values);
   }
 
   async function submitFreeText(wish: string) {
@@ -169,25 +231,67 @@ export function WishComposer() {
     }
   }
 
+  const missingRequired = !schema || hasMissingRequired(schema, values);
+
   return (
     <StepCard step="STEP 01" title="describe your wish" sub="pick an action — we pre-fill the rest">
       {mode === "structured" ? (
         <>
-          <StructuredComposer schemas={CLIENT_INTENT_SCHEMAS} onSubmit={submitComposer} busy={busy} />
-          <div className="flex flex-wrap gap-2 mt-3">
-            <span className="text-xs text-ink-3">or try:</span>
-            {CHIPS.map((c) => (
-              <button
-                key={c.label}
-                type="button"
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              submitStructured();
+            }}
+          >
+            <SentenceBox>
+              <SentencePrefix>I want to</SentencePrefix>
+              <ActionPill
+                variant="action"
+                value={schema?.verb}
+                placeholder="pick action"
+                ariaLabel="Select action"
+                options={CLIENT_INTENT_SCHEMAS.map((s) => ({
+                  id: s.intent,
+                  label: s.verb,
+                  sub: s.description,
+                }))}
+                open={openPillKey === "action"}
+                onOpenChange={(o) => setOpenPillKey(o ? "action" : null)}
+                onChange={pickSchema}
                 disabled={busy}
-                onClick={() => submitComposer({ intent: c.intent, values: c.values })}
-                className="px-3 py-1 rounded-pill text-sm font-medium bg-accent-2 border border-accent text-ink hover:bg-accent disabled:opacity-50"
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
+              />
+              {schema?.fields.length ? (
+                renderSentenceParts(schema).map((part, i) => {
+                  if (part.kind === "connector") {
+                    return <SentenceConnector key={`connector-${i}`}>{part.text}</SentenceConnector>;
+                  }
+
+                  const field = schema.fields.find((f) => f.key === part.key);
+                  if (!field) return null;
+                  return (
+                    <FieldPill
+                      key={field.key}
+                      field={field}
+                      value={values[field.key] ?? ""}
+                      open={openPillKey === field.key}
+                      onOpenChange={(o) => setOpenPillKey(o ? field.key : null)}
+                      onChange={(v) => setField(field.key, v)}
+                      disabled={busy}
+                    />
+                  );
+                })
+              ) : (
+                <SentenceConnector>pick an action</SentenceConnector>
+              )}
+            </SentenceBox>
+            <button
+              type="submit"
+              disabled={busy || missingRequired}
+              className="rounded-pill bg-accent text-ink px-4 py-2 font-semibold hover:bg-accent-2 disabled:opacity-50"
+            >
+              {busy ? "…" : "looks good →"}
+            </button>
+          </form>
           <button
             type="button"
             onClick={() => setMode("freetext")}
@@ -195,6 +299,26 @@ export function WishComposer() {
           >
             type instead
           </button>
+          <div className="flex flex-wrap gap-2 mt-3">
+            <span className="text-xs text-ink-3">or try:</span>
+            {CHIPS.map((c) => (
+              <button
+                key={c.label}
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setIntentId(c.intent);
+                  setValues(c.values);
+                  setOpenPillKey(null);
+                  const s = CLIENT_INTENT_SCHEMAS.find((x) => x.intent === c.intent);
+                  if (s) submitStructuredWith(s, c.values);
+                }}
+                className="px-3 py-1 rounded-pill text-sm font-medium bg-accent-2 border border-accent text-ink hover:bg-accent disabled:opacity-50"
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
         </>
       ) : (
         <>
@@ -233,10 +357,89 @@ export function WishComposer() {
   );
 }
 
-function phrase(intent: string, v: Record<string, string>): string {
-  const verb = intent === "compound-v3.withdraw" ? "withdraw" : "deposit";
-  const prep = intent === "compound-v3.withdraw" ? "from" : "into";
-  return `I want to ${verb} ${v.amount} ${v.asset} ${prep} Compound on Sepolia.`;
+function FieldPill({
+  field,
+  value,
+  open,
+  onOpenChange,
+  onChange,
+  disabled,
+}: {
+  field: IntentField;
+  value: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+}) {
+  if (field.type === "amount") {
+    return (
+      <ActionPill
+        variant="amount"
+        value={value}
+        placeholder="amount"
+        ariaLabel="Enter amount"
+        onChange={onChange}
+        disabled={disabled}
+        inputWidthCh={Math.max(4, Math.min(10, value.length || 6))}
+      />
+    );
+  }
+
+  const variant = pillVariantFor(field);
+  return (
+    <ActionPill
+      variant={variant}
+      value={value}
+      placeholder={field.key}
+      ariaLabel={ariaLabelForField(field)}
+      iconTicker={field.type === "asset" ? value : undefined}
+      options={field.options.map(optionForValue)}
+      open={open}
+      onOpenChange={onOpenChange}
+      onChange={onChange}
+      disabled={disabled}
+    />
+  );
+}
+
+function pillVariantFor(field: IntentField): ActionPillVariant {
+  if (field.type === "amount") return "amount";
+  if (field.type === "asset") return "from";
+  if (field.key.toLowerCase().includes("protocol")) return "protocol";
+  return "chain";
+}
+
+function optionForValue(v: string): ActionPillOption {
+  return { id: v, label: labelForValue(v) };
+}
+
+function labelForValue(v: string): string {
+  if (v === "ethereum-sepolia") return "Ethereum Sepolia";
+  return v;
+}
+
+function ariaLabelForField(field: IntentField): string {
+  if (field.type === "amount") return "Enter amount";
+  if (field.type === "asset") return "Select asset";
+  if (field.key.toLowerCase().includes("protocol")) return "Select protocol";
+  return "Select chain";
+}
+
+function hasMissingRequired(schema: IntentSchema, vs: Record<string, string>): boolean {
+  return schema.fields.some((f) => f.required && !vs[f.key]);
+}
+
+function phrase(schema: IntentSchema, v: Record<string, string>): string {
+  if (schema.intent.startsWith("compound-v3.")) {
+    const prep = schema.intent === "compound-v3.withdraw" ? "from" : "into";
+    return `I want to ${schema.verb} ${v.amount ?? ""} ${v.asset ?? ""} ${prep} Compound on ${labelForValue(v.chain ?? "")}.`;
+  }
+
+  const parts = renderSentenceParts(schema).map((part) =>
+    part.kind === "connector" ? part.text : labelForValue(v[part.key] ?? ""),
+  );
+  return `I want to ${schema.verb} ${parts.filter(Boolean).join(" ")}.`;
 }
 
 function guessFromText(t: string): { widgetType: string; amount?: string; asset?: string } {
