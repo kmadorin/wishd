@@ -1,0 +1,34 @@
+import { z } from "zod";
+import type { PluginCtx } from "@wishd/plugin-sdk";
+import { prepareDeposit } from "../prepare";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+export function createCompoundMcp(ctx: PluginCtx) {
+  const server = new McpServer({ name: "compound", version: "0.0.0" });
+
+  server.tool(
+    "prepare_deposit",
+    "Prepare a Compound v3 USDC deposit. Reads allowance via viem and returns prepared calls (approve + supply, or supply only).",
+    {
+      amount: z.string().describe("USDC amount, decimal string e.g. '10'"),
+      user: z
+        .string()
+        .regex(/^0x[a-fA-F0-9]{40}$/)
+        .describe("User EOA / smart-account address"),
+      chainId: z.number().int().describe("Chain id, e.g. 11155111 for Sepolia"),
+    },
+    async (args) => {
+      const prepared = await prepareDeposit({
+        amount: args.amount,
+        user: args.user as `0x${string}`,
+        chainId: args.chainId,
+        publicClient: ctx.publicClient,
+      });
+      return {
+        content: [{ type: "text", text: JSON.stringify(prepared) }],
+      };
+    },
+  );
+
+  return server;
+}
