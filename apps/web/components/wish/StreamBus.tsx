@@ -12,12 +12,14 @@ type WishDetail = {
 };
 
 export function StreamBus() {
-  const { appendWidget, patchWidget, dismissWidget, appendNarration, reset } = useWorkspace();
+  const { appendWidget, patchWidget, dismissWidget, appendNarration, reset, setExecuting } = useWorkspace();
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<WishDetail>).detail;
       if (!detail?.wish) return;
+      if (useWorkspace.getState().executing) return;
       if (detail.reset) reset();
+      setExecuting(true);
       startStream({
         wish: detail.wish,
         account: detail.account,
@@ -35,10 +37,10 @@ export function StreamBus() {
           if (ev.type === "ui.patch") patchWidget(ev.id, ev.props);
           if (ev.type === "ui.dismiss") dismissWidget(ev.id);
         },
-      });
+      }).finally(() => setExecuting(false));
     };
     window.addEventListener("wishd:wish", handler);
     return () => window.removeEventListener("wishd:wish", handler);
-  }, [appendWidget, patchWidget, dismissWidget, appendNarration, reset]);
+  }, [appendWidget, patchWidget, dismissWidget, appendNarration, reset, setExecuting]);
   return null;
 }

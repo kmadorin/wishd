@@ -19,6 +19,8 @@ export type SkeletonInit = {
 type State = {
   widgets: WidgetInstance[];
   narration: string;
+  executing: boolean;
+  setExecuting: (v: boolean) => void;
   appendWidget: (w: Omit<WidgetInstance, "createdAt">) => void;
   patchWidget: (id: string, props: Record<string, unknown>) => void;
   dismissWidget: (id: string) => void;
@@ -40,6 +42,8 @@ export const SKELETON_TYPE = "__skeleton__";
 export const useWorkspace = create<State>((set) => ({
   widgets: [],
   narration: "",
+  executing: false,
+  setExecuting: (v) => set({ executing: v }),
   appendWidget: (w) =>
     set((s) => ({
       widgets: [...s.widgets, { ...w, createdAt: Date.now() }],
@@ -91,5 +95,5 @@ export const useWorkspace = create<State>((set) => ({
       ),
     })),
   appendNarration: (delta) => set((s) => ({ narration: s.narration + delta })),
-  reset: () => set({ widgets: [], narration: "" }),
+  reset: () => set({ widgets: [], narration: "", executing: false }),
 }));
