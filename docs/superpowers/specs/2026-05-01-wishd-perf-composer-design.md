@@ -114,6 +114,7 @@ When the user submits via the composer, the client opens **two** parallel reques
 
 1. `POST /api/prepare/[intent]` — fast path, returns prepared payload + widget render directive.
 2. `POST /api/chat` — existing SSE endpoint, but with a system-prompt mode flag `narrate-only` (e.g., extra header or body field). In this mode the agent:
+   - Runs on **Haiku 4.5** (same default as free-text path). OAuth Pro/Max sub flattens token cost; the choice is purely latency/quality. Narration output is short and structured from known inputs — Haiku handles it trivially and TTFT is ~1–2s shorter than Sonnet, which matters for perceived liveness.
    - Receives the structured intent and prepared payload as input context.
    - **Does not** call `prepare_*` (already done) or `widget.render` (already rendered).
    - Streams `chat.delta` text into the chat bubble: "supplying 100 USDC on Compound v3 — current rate ~4.2%, allowance OK, ready to sign".
