@@ -76,7 +76,7 @@ export function CompoundExecute(props: CompoundExecuteProps) {
     }
     if (sendError) {
       setPhase("error");
-      setErrMsg(sendError.message);
+      setErrMsg(friendlyError(sendError));
       return;
     }
     setPhase("ready");
@@ -143,6 +143,19 @@ export function CompoundExecute(props: CompoundExecuteProps) {
       )}
     </div>
   );
+}
+
+function friendlyError(err: Error): string {
+  const msg = err.message ?? String(err);
+  const code = (err as { code?: number }).code;
+  const name = err.name ?? "";
+  if (code === 4001 || /user rejected|user denied|rejected the request/i.test(msg) || /UserRejected/.test(name)) {
+    return "you cancelled the wallet prompt — click retry to try again";
+  }
+  if (/insufficient funds|insufficient balance/i.test(msg)) {
+    return "insufficient ETH for gas — fund this wallet on Sepolia and retry";
+  }
+  return msg.length > 200 ? msg.slice(0, 200) + "…" : msg;
 }
 
 function labelFor(p: Phase, kind: "deposit" | "withdraw", needsApprove: boolean): string {
