@@ -1,8 +1,10 @@
 # wishd — Uniswap Swap Plugin Design
 
 **Date:** 2026-05-01
-**Status:** Draft (pending user review)
-**Scope:** Add a single `plugins/uniswap` plugin that supports token swaps end-to-end across all chains in the manifest, using the Uniswap Trading API where available and a direct on-chain Uniswap V3 fallback elsewhere (Sepolia, plus any chain Uniswap deploys but the Trading API doesn't gateway). The plugin is end-to-end: composer intent, prepare, MCP tool, summary widget with live quote refresh, execute widget with state-machine + timeline, and success card with stub keeper offers. Builds on the UI primitives shipped in the parallel UI parity spec.
+**Status:** Revised after `@wishd/tokens` landed; pending user review.
+**Scope:** Add a single `plugins/uniswap` plugin that supports token swaps end-to-end across all chains in the manifest, using the Uniswap Trading API where available and a direct on-chain Uniswap V3 fallback elsewhere (Sepolia, plus any chain Uniswap deploys but the Trading API doesn't gateway). The plugin is end-to-end: composer intent, prepare, MCP tool, summary widget with live quote refresh, execute widget with state-machine + timeline, and success card with stub keeper offers. Builds on the UI primitives shipped in the parallel UI parity spec, and consumes the `@wishd/tokens` workspace package as the single source of truth for ERC-20 / native-token metadata.
+
+**Revision note:** The original draft proposed a custom multi-chain `apps/web/lib/tokens.ts` registry. That has been superseded by `packages/wishd-tokens` (Uniswap Token Lists schema, validated, 19 tests passing). This revision rewires the swap plugin to consume `@wishd/tokens` directly, replaces the custom registry section with a `resolveAsset` helper, and replaces the static per-chain asset list in the composer with a registry-derived searchable picker. Strategy logic, route contracts, widget contracts, and execute flow are unchanged.
 
 ## Goal
 
@@ -22,6 +24,8 @@ Today wishd ships one plugin (`compound-v3`, lend-only). The prototype demonstra
 - No multi-hop on the direct V3 fallback — single-pool exact-input only (sufficient for WETH⇄USDC on Sepolia). Trading API path handles multi-hop on prod chains automatically.
 - No limit orders, no DCA, no range-based swaps. The Step 04 success card surfaces these as keeper-offer stubs ("DCA back", "Range alert", "Earn on idle tokens") but no real keeper deploys.
 - No mobile-specific UX work beyond the parallel UI parity spec.
+- No "paste contract address" exotic-token import path. v0's asset picker only offers tokens registered in `@wishd/tokens` (upstream + overrides). If a demo needs a token not in upstream, add an override file to `packages/wishd-tokens/src/overrides/` — that's the pressure that drives override hygiene. Address paste / on-chain ERC-20 metadata resolution is v0.1.
+- No external token-list providers (CoinGecko, 1inch, etc.) at runtime. Static at build time only.
 
 ## Architecture overview
 
@@ -32,9 +36,9 @@ plugins/uniswap/
 ├── package.json
 ├── manifest.ts            # name:"uniswap", chains:[1,8453,42161,10,137,130,11155111], trust:"verified"
 ├── index.ts               # definePlugin(...) wiring strategies + widgets + intents
-├── addresses.ts           # WETH/USDC/USDT/DAI/WBTC + UniversalRouter + (Sepolia) QuoterV2/SwapRouter02
-├── tokens.ts              # per-chain token registry (address, symbol, decimals, iconClass)
-├── intents.ts             # uniswap.swap intent schema
+├── addresses.ts           # UniversalRouter (per chain) + Sepolia direct-V3 deployment (QuoterV2/SwapRouter02)
+├── resolveAsset.ts        # (chainId, symbol) → { address, decimals, isNative, symbol } via @wishd/tokens
+├── intents.ts             # uniswap.swap intent schema (registry-driven options)
 ├── abis/
 │   ├── erc20.ts
 │   ├── quoterV2.ts        # only used by directV3 strategy
@@ -68,7 +72,8 @@ WishComposer.submitComposer({intent:"uniswap.swap", values})
   └─> prepareIntent("uniswap.swap", values)
         └─> POST /api/prepare/uniswap.swap
               ├─ validate(values, account)              # skill input rules (regex, no shell metas)
-              ├─ resolve(tokenIn, tokenOut, chainId)    # tokens.ts lookup → addresses + decimals
+              ├─ resolveAsset(chainId, assetIn|assetOut) # @wishd/tokens lookup → address + decimals + isNative
+              │                                          # throws "unsupported (chain, symbol)" if not in registry
               ├─ Promise.all([
               │     readBalance(tokenIn, swapper),       # publicClient.readContract or getBalance
               │     prepare.quote({chainId, ...}),       # strategy-dispatched
@@ -322,43 +327,76 @@ The `SwapSummary` widget renders a yellow "Sepolia liquidity is sparse — previ
 
 ### Generalisation hook
 
-`addresses.ts` exports `DIRECT_V3_CHAINS: Record<number, { quoter, swapRouter02, weth, knownPools? }>`. Adding a new chain to the direct path is a one-file edit; no widget or strategy change required.
+`addresses.ts` exports `DIRECT_V3_CHAINS: Record<number, { quoterV2: Hex; swapRouter02: Hex; universalRouter?: Hex }>`. WETH (or the chain's wrapped-native equivalent) is resolved via `resolveAsset(chainId, getNative(chainId)!.wrappedSymbol)` — no per-chain duplication. Adding a new chain to the direct path is a one-file edit (and a `@wishd/tokens` override for the wrapped-native ERC-20 if upstream lacks it); no widget or strategy change required.
 
-## Token registry
+## Token registry integration
 
-Replace the current single-chain `apps/web/lib/tokens.ts` with a multi-chain shape:
+The plugin does **not** maintain its own token registry. `@wishd/tokens` (`packages/wishd-tokens`) is the single source of truth for ERC-20 metadata across the monorepo. It exposes:
 
 ```ts
-export type TokenInfo = {
-  address: Hex;
-  symbol: string;
-  decimals: number;
-  iconClass: string;            // "asset-dot eth" | "asset-dot usdc" | …
-  isNative?: boolean;           // ETH on chain 1, MATIC on 137, etc.
-};
+// from @wishd/tokens
+import { getToken, getTokens, findByAddress, listChains, getNative, NATIVE_PLACEHOLDER } from "@wishd/tokens";
 
-export const TOKENS: Record<number, Record<string, TokenInfo>> = {
-  1:        { ETH:{...}, USDC:{...}, USDT:{...}, DAI:{...}, WBTC:{...} },
-  8453:     { ETH:{...}, USDC:{...}, USDT:{...}, DAI:{...}, WBTC:{...} },
-  42161:    { ETH:{...}, USDC:{...}, USDT:{...}, DAI:{...}, WBTC:{...} },
-  10:       { ETH:{...}, USDC:{...}, USDT:{...}, DAI:{...}, WBTC:{...} },
-  137:      { MATIC:{...}, USDC:{...}, USDT:{...}, DAI:{...}, WETH:{...}, WBTC:{...} },
-  130:      { ETH:{...}, USDC:{...} },
-  11155111: { ETH:{...}, USDC:{...} },                     // limited
-};
+getToken(chainId: number, symbol: string): TokenInfo | undefined;       // ERC-20 only
+getTokens(chainId: number): TokenInfo[];                                 // all ERC-20s registered for chain
+findByAddress(chainId: number, address: Address): TokenInfo | undefined;
+getNative(chainId: number): { chainId, symbol, decimals, wrappedSymbol } | undefined;
+NATIVE_PLACEHOLDER: "0x0000000000000000000000000000000000000000";
+// TokenInfo === Uniswap schema: { name, address, symbol, decimals, chainId, logoURI?, tags?, extensions? }
 ```
 
-`amount.ts` gains a `(symbol, chainId)` overload reading from this registry. The Compound plugin migrates to the same registry — no functional change, just sourcing.
+`getToken` returns `undefined` (does not throw). Natives are not stored in the registry — they're surfaced via `getNative`. The plugin owns a small adapter:
 
-For the composer's asset pickers: the `intents.ts` schema lists the **union** of supported symbols per `assetIn`/`assetOut` field; per-chain validation happens server-side in `prepareSwap` (reject if `(symbol, chainId)` not in registry → 400 with explicit error).
+```ts
+// plugins/uniswap/resolveAsset.ts
+import type { Hex } from "viem";
+import { getToken, getNative, NATIVE_PLACEHOLDER } from "@wishd/tokens";
+
+export type ResolvedAsset = {
+  address: Hex;
+  decimals: number;
+  isNative: boolean;
+  symbol: string;
+};
+
+export function resolveAsset(chainId: number, symbol: string): ResolvedAsset {
+  const native = getNative(chainId);
+  if (native?.symbol === symbol) {
+    return { address: NATIVE_PLACEHOLDER, decimals: native.decimals, isNative: true, symbol };
+  }
+  const t = getToken(chainId, symbol);
+  if (!t) throw new Error(`unsupported asset on chain ${chainId}: ${symbol}`);
+  return { address: t.address as Hex, decimals: t.decimals, isNative: false, symbol };
+}
+```
+
+This is the only place that decides "what does ETH mean on chain X" — every strategy, prepare, and route handler calls `resolveAsset` rather than touching the registry directly.
+
+**WETH for Direct V3 wrap/unwrap** is resolved the same way: `resolveAsset(chainId, getNative(chainId)!.wrappedSymbol).address`. The Sepolia `weth` field in `addresses.ts.DIRECT_V3_CHAINS` is dropped — it was duplicating registry knowledge.
+
+**No `amount.ts` overloads.** Plugin call sites use `viem.parseUnits(amount, resolveAsset(chainId, symbol).decimals)` directly. The existing `apps/web/lib/amount.ts` (`toWei`/`fromWei` taking `{ decimals }`) is unchanged.
+
+**Cleanup:** `apps/web/lib/tokens.ts` (legacy single-chain Sepolia stub) and the untracked `apps/web/lib/tokens.test.ts` are deleted in this work — they're orphaned. The grep verified no consumers.
 
 ## Composer schema
+
+The plugin's intent declares `assetIn`/`assetOut` without a hardcoded option list. The composer's asset picker derives options at render time from the registry:
+
+```ts
+// asset picker (rendered inside SwapSummary widget; same logic powers composer dropdown)
+function assetOptions(chainId: number): string[] {
+  const native = getNative(chainId)?.symbol;
+  const erc20s = getTokens(chainId).map(t => t.symbol);
+  return native ? [native, ...erc20s] : erc20s;
+}
+```
+
+The picker is searchable (filter-as-you-type by symbol or name). On chain switch, the picker repopulates. Adding a token to `@wishd/tokens` (upstream bump or override) surfaces it automatically with no plugin code change.
 
 ```ts
 // plugins/uniswap/intents.ts
 import type { IntentSchema } from "@wishd/plugin-sdk";
 
-const SUPPORTED_ASSETS = ["ETH","USDC","USDT","DAI","WBTC"];
 const SUPPORTED_CHAINS = ["ethereum","base","arbitrum","optimism","polygon","unichain","ethereum-sepolia"];
 
 export const uniswapIntents: IntentSchema[] = [{
@@ -366,10 +404,10 @@ export const uniswapIntents: IntentSchema[] = [{
   verb: "swap",
   description: "exchange one token for another",
   fields: [
-    { key: "amount",   type: "amount", required: true,  default: "0.1" },
-    { key: "assetIn",  type: "asset",  required: true,  default: "ETH",  options: SUPPORTED_ASSETS },
-    { key: "assetOut", type: "asset",  required: true,  default: "USDC", options: SUPPORTED_ASSETS },
-    { key: "chain",    type: "chain",  required: true,  default: "ethereum-sepolia", options: SUPPORTED_CHAINS },
+    { key: "amount",   type: "amount", required: true, default: "0.1" },
+    { key: "assetIn",  type: "asset",  required: true, default: "ETH"  },   // options resolved per-chain at render
+    { key: "assetOut", type: "asset",  required: true, default: "USDC" },
+    { key: "chain",    type: "chain",  required: true, default: "ethereum-sepolia", options: SUPPORTED_CHAINS },
   ],
   widget: "swap-summary",
   slot: "flow",
@@ -378,7 +416,25 @@ export const uniswapIntents: IntentSchema[] = [{
 }];
 ```
 
-`assetIn === assetOut` is rejected at the prepare layer with a clear "pick two different assets" error.
+The structured composer's asset fields render `<AssetPicker chainId={values.chain.toChainId()} />` rather than a fixed dropdown. The free-text composer's `guessFromText` regex matches a small common-symbol set (ETH, USDC, USDT, DAI, WBTC, WETH, MATIC) as a first-parse heuristic only — unmatched tokens leave the seeded value empty, and the user picks via the asset picker.
+
+`assetIn === assetOut` is rejected at the prepare layer with a clear "pick two different assets" error. `resolveAsset` throws "unsupported asset on chain X: SYMBOL" for any combo not in the registry — surfaced as a 400 from `/api/prepare/uniswap.swap`.
+
+### Per-chain coverage today (informational)
+
+Derived from `@wishd/tokens` upstream + Sepolia override at the time of writing:
+
+| chain | native | ERC-20s available |
+|---|---|---|
+| 1 mainnet | ETH | DAI, MATIC, USDC, USDT, WBTC, WETH |
+| 8453 Base | ETH | DAI, USDC, WETH |
+| 42161 Arbitrum | ETH | DAI, MATIC, USDC, USDT, WBTC, WETH |
+| 10 Optimism | ETH | DAI, USDC, USDT, WBTC, WETH |
+| 137 Polygon | MATIC | DAI, MATIC, USDC, USDT, WBTC, WETH, WMATIC |
+| 130 Unichain | ETH | (none — native-only; effectively unusable for swap until upstream or override adds tokens) |
+| 11155111 Sepolia | ETH | USDC, WETH (override) |
+
+Coverage evolves with upstream bumps and overrides; the table is illustrative, not authoritative. The composer always reflects current registry state.
 
 ## Insufficient balance + WETH unwrap
 
@@ -581,7 +637,7 @@ All routes return `application/json`. 4xx for validation/no-route/insufficient-l
 
 ## Decimal handling
 
-All amount math goes through `lib/amount.ts` / token registry. No bare `1e18`, no hardcoded `6`. The Trading API expects integer wei strings; we convert at the boundary via `parseUnits(amount, TOKENS[chainId][symbol].decimals)`. Display always uses `formatUnits` — never raw bigint.
+All amount math goes through `viem.parseUnits` + `viem.formatUnits` with decimals sourced from `resolveAsset(chainId, symbol).decimals`. No bare `1e18`, no hardcoded `6`. The Trading API expects integer wei strings; we convert at the boundary. Display always uses `formatUnits` — never raw bigint. The legacy `apps/web/lib/amount.ts` `toWei`/`fromWei` (taking `{ decimals }`) is unchanged and used by Compound; the swap plugin doesn't depend on it.
 
 ## Verification
 
@@ -623,7 +679,7 @@ End-to-end manual on Base (Trading API path) and Sepolia (direct V3 path):
 2. **Sepolia liquidity volatility.** Pools can drain mid-demo. Mitigation: pre-demo, run a quote against the target pair to confirm depth; show explicit liquidity-note banner so failure is expected, not surprising.
 3. **L2 WETH-vs-ETH delivery.** Appending an unwrap call always (even when redundant) may hit a tiny gas cost overhead on mainnet/L2 depending on whether Trading API already includes one. Acceptable v0; revisit when we instrument actual gas usage.
 4. **Quote → swap call contract mismatch.** If we change `routingPreference`/`protocols` between the two endpoints, the API may reject. Single source of truth for these constants in `strategies/tradingApi.ts`.
-5. **Schema asset union.** Listing all five assets even on chains where some don't exist (e.g. Unichain has limited coverage) means the composer offers invalid pairs that fail at prepare. Acceptable trade-off (versus dynamic per-chain options); error message must be clear.
+5. **Per-chain asset coverage gaps.** `@wishd/tokens` upstream is sparse on some chains (Base lacks USDT/WBTC; Unichain native-only at write time). The picker reflects reality — gaps are visible to the user, not hidden behind misleading defaults. If demos require a missing token, add to `packages/wishd-tokens/src/overrides/<chain>.tokenlist.json`. Composer surfaces the override on next reload.
 6. **TanStack Query setup.** wagmi v2 already mounts a QueryClientProvider. Confirm the provider wraps app/page; otherwise `useQuery` calls in the swap widget will error on mount.
 7. **Free-text path narration ordering.** Existing freetext flow renders skeleton, then waits for `ui.render` from agent. With Trading API in the loop, first-paint latency is ~600ms (`/check_approval` + `/quote` parallel). Skeleton timeout is 5s — comfortable headroom.
 8. **Direct V3 fee-tier scan cost.** Three `simulateContract` calls in parallel hit the public RPC. Cache miss on first call; subsequent same-pair-same-block share the slot0 read. For Sepolia we use whatever public RPC is configured for the wagmi chain — assume capped to a few rps.
@@ -632,17 +688,21 @@ End-to-end manual on Base (Trading API path) and Sepolia (direct V3 path):
 ## Appendix — file change map
 
 ```
-NEW   plugins/uniswap/                                              # full new plugin (above)
-EDIT  apps/web/lib/tokens.ts                                        # multi-chain registry
-EDIT  apps/web/lib/amount.ts                                        # (symbol, chainId) overload
-EDIT  apps/web/lib/intentRegistry.client.ts                         # include uniswapIntents
-EDIT  apps/web/server/systemPrompt.ts                               # swap branch
-EDIT  apps/web/components/wish/WishComposer.tsx                     # guessFromText swap regex; intent dispatch
-NEW   apps/web/app/api/prepare/uniswap.swap/route.ts
-NEW   apps/web/app/api/uniswap/quote/route.ts
-NEW   apps/web/app/api/uniswap/swap/route.ts
-NEW   apps/web/app/api/uniswap/balance/route.ts
-EDIT  apps/web/server/intentDispatch.ts                             # (if dispatch table is centralised)
-EDIT  .env.local.example                                            # UNISWAP_API_KEY=
-EDIT  apps/web/app/providers.tsx                                    # confirm QueryClientProvider mounted
+NEW    plugins/uniswap/                                              # full new plugin (above)
+NEW    plugins/uniswap/resolveAsset.ts                               # (chainId, symbol) → ResolvedAsset via @wishd/tokens
+DELETE apps/web/lib/tokens.ts                                        # legacy single-chain stub (no consumers)
+DELETE apps/web/lib/tokens.test.ts                                   # untracked stale test artefact
+EDIT   apps/web/lib/intentRegistry.client.ts                         # include uniswapIntents
+EDIT   apps/web/server/systemPrompt.ts                               # swap branch
+EDIT   apps/web/components/wish/WishComposer.tsx                     # guessFromText swap regex; intent dispatch
+NEW    apps/web/components/wish/AssetPicker.tsx                      # registry-driven searchable picker (used by composer + summary)
+NEW    apps/web/app/api/prepare/uniswap.swap/route.ts
+NEW    apps/web/app/api/uniswap/quote/route.ts
+NEW    apps/web/app/api/uniswap/swap/route.ts
+NEW    apps/web/app/api/uniswap/balance/route.ts
+EDIT   apps/web/server/intentDispatch.ts                             # uniswap.swap branch
+EDIT   .env.local.example                                            # UNISWAP_API_KEY + RPC_URL_<chainId>=
+VERIFY apps/web/app/providers.tsx                                    # QueryClientProvider already mounted
 ```
+
+`apps/web/lib/amount.ts` is **not** modified by this work (no `(symbol, chainId)` overload). The swap plugin uses `viem.parseUnits`/`formatUnits` with decimals from `resolveAsset` directly.
