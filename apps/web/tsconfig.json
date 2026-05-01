@@ -16,6 +16,9 @@
       ],
       "@keepers/*": [
         "../../keepers/*"
+      ],
+      "@tanstack/react-query": [
+        "./node_modules/@tanstack/react-query"
       ]
     },
     "noEmit": true,
