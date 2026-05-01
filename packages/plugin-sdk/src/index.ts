@@ -6,6 +6,26 @@ export type TrustTier = "verified" | "community" | "unverified";
 
 export type WidgetSlot = "flow" | "results" | "pinned" | "panel";
 
+export type IntentField =
+  | { key: string; type: "amount"; required?: boolean; default?: string }
+  | { key: string; type: "asset"; required?: boolean; default?: string; options: string[] }
+  | { key: string; type: "chain"; required?: boolean; default: string; options: string[] };
+
+export type IntentSchema = {
+  /** Plugin-namespaced id, e.g. "compound-v3.deposit". */
+  intent: string;
+  /** Composer label / verb, e.g. "deposit", "withdraw". */
+  verb: string;
+  /** Sentence-case description shown in the action dropdown row. */
+  description: string;
+  /** Ordered list of fields rendered after the verb. */
+  fields: IntentField[];
+  /** Widget name passed to ui.render / mounted by the registry. */
+  widget: string;
+  /** Slot for forward-compat. v0.1 always "flow". */
+  slot?: WidgetSlot;
+};
+
 export type Manifest = {
   name: string;
   version: string;
@@ -70,6 +90,7 @@ export type Plugin = {
   mcp(ctx: PluginCtx): { server: Server; serverName: string };
   widgets: Record<string, ComponentType<any>>;
   skills?: Record<string, string>;
+  intents?: IntentSchema[];
 };
 
 export function definePlugin(p: Plugin): Plugin {

@@ -2,8 +2,13 @@ import { cookieStorage, createConfig, createStorage, http } from "wagmi";
 import { sepolia } from "wagmi/chains";
 import { porto } from "porto/wagmi";
 
-export function getConfig() {
-  return createConfig({
+type Config = ReturnType<typeof createConfig>;
+
+let cached: Config | undefined;
+
+export function getConfig(): Config {
+  if (cached) return cached;
+  cached = createConfig({
     chains: [sepolia],
     connectors: [porto()],
     multiInjectedProviderDiscovery: false,
@@ -13,9 +18,8 @@ export function getConfig() {
     },
     ssr: true,
   });
+  return cached;
 }
-
-export const wagmiConfig = getConfig();
 
 declare module "wagmi" {
   interface Register {

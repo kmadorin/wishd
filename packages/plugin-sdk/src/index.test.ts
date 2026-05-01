@@ -21,4 +21,26 @@ describe("plugin-sdk", () => {
     };
     expect(defineKeeper(stub)).toBe(stub);
   });
+
+  it("Plugin accepts optional intents array of IntentSchema", () => {
+    const schema: import("./index").IntentSchema = {
+      intent: "compound-v3.deposit",
+      verb: "deposit",
+      description: "supply tokens to earn yield",
+      fields: [
+        { key: "amount", type: "amount", required: true, default: "10" },
+        { key: "asset", type: "asset", required: true, default: "USDC", options: ["USDC"] },
+        { key: "chain", type: "chain", required: true, default: "ethereum-sepolia", options: ["ethereum-sepolia"] },
+      ],
+      widget: "compound-summary",
+      slot: "flow",
+    };
+    const stub: Plugin = {
+      manifest: { name: "x", version: "0", chains: [1], trust: "verified", provides: { intents: [], widgets: [], mcps: [] } },
+      mcp: () => ({ server: {} as never, serverName: "x" }),
+      widgets: {},
+      intents: [schema],
+    };
+    expect(definePlugin(stub).intents).toEqual([schema]);
+  });
 });

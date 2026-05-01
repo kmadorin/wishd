@@ -75,8 +75,9 @@ export function CompoundExecute(props: CompoundExecuteProps) {
       return;
     }
     if (sendError) {
+      logSendError(sendError, props);
       setPhase("error");
-      setErrMsg(sendError.message);
+      setErrMsg(friendlyError(sendError));
       return;
     }
     setPhase("ready");
@@ -103,6 +104,21 @@ export function CompoundExecute(props: CompoundExecuteProps) {
     }
     if (phase === "ready" || phase === "error") {
       resetSend();
+      console.info(
+        JSON.stringify({
+          tag: "wishd:exec",
+          event: "sendCalls-attempt",
+          kind,
+          chainId: props.chainId,
+          user: props.user,
+          callCount: props.calls.length,
+          calls: props.calls.map((c) => ({ to: c.to, value: c.value, dataLen: c.data.length, selector: c.data.slice(0, 10) })),
+          amount: props.amount,
+          asset: props.asset,
+          needsApprove: props.needsApprove ?? false,
+          t: Date.now(),
+        }),
+      );
       sendCalls({ calls: props.calls as any });
     }
   }
@@ -143,6 +159,60 @@ export function CompoundExecute(props: CompoundExecuteProps) {
       )}
     </div>
   );
+}
+
+function logSendError(err: unknown, props: CompoundExecuteProps): void {
+  const e = err as Record<string, unknown> & Error;
+  const cause = e.cause as (Record<string, unknown> & Error) | undefined;
+  const causeCause = cause?.cause as (Record<string, unknown> & Error) | undefined;
+  const summary = {
+    tag: "wishd:exec",
+    event: "sendCalls-error",
+    kind: props.actionKind ?? "deposit",
+    chainId: props.chainId,
+    user: props.user,
+    name: e?.name,
+    code: (e as { code?: number | string })?.code,
+    shortMessage: (e as { shortMessage?: string })?.shortMessage,
+    message: e?.message,
+    details: (e as { details?: string })?.details,
+    metaMessages: (e as { metaMessages?: unknown })?.metaMessages,
+    docsPath: (e as { docsPath?: string })?.docsPath,
+    cause: cause
+      ? {
+          name: cause.name,
+          code: (cause as { code?: number | string }).code,
+          shortMessage: (cause as { shortMessage?: string }).shortMessage,
+          message: cause.message,
+          details: (cause as { details?: string }).details,
+        }
+      : null,
+    causeCause: causeCause
+      ? { name: causeCause.name, code: (causeCause as { code?: number | string }).code, message: causeCause.message }
+      : null,
+    keys: Object.keys(e ?? {}),
+    callCount: props.calls.length,
+    t: Date.now(),
+  };
+  console.error("wishd:exec sendCalls-error", summary, err);
+  try {
+    console.error("wishd:exec sendCalls-error JSON", JSON.stringify(summary));
+  } catch {
+    /* circular */
+  }
+}
+
+function friendlyError(err: Error): string {
+  const msg = err.message ?? String(err);
+  const code = (err as { code?: number }).code;
+  const name = err.name ?? "";
+  if (code === 4001 || /user rejected|user denied|rejected the request/i.test(msg) || /UserRejected/.test(name)) {
+    return "you cancelled the wallet prompt — click retry to try again";
+  }
+  if (/insufficient funds|insufficient balance/i.test(msg)) {
+    return "insufficient ETH for gas — fund this wallet on Sepolia and retry";
+  }
+  return msg.length > 200 ? msg.slice(0, 200) + "…" : msg;
 }
 
 function labelFor(p: Phase, kind: "deposit" | "withdraw", needsApprove: boolean): string {
