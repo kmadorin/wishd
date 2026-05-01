@@ -22,7 +22,7 @@ The skeleton is the load-bearing seam for everything later: more plugins, Mode B
 - No persistent panels, onboarding flow, analytics widgets
 - No tool routing / dynamic plugin activation
 - No more than one plugin (compound-v3 only)
-- No more than one chain (Sepolia only; fallback to Base Sepolia if Porto connector fails)
+- No more than one chain (Ethereum Sepolia only)
 - No bidirectional widget→agent events (SSE one-way only)
 
 ## Architecture (five layers, only L0–L2 implemented)
@@ -295,11 +295,9 @@ Failure modes to spot-check:
 - Wrong chain → Switch button works.
 - Insufficient USDC → tx error surfaces inside widget; agent loop unaffected.
 - `ANTHROPIC_API_KEY` missing → server emits `error` SSE frame; UI surfaces in-card.
-- Porto connector refuses Sepolia → switch to Base Sepolia (one-line config change; `addresses.ts` already keys by chainId).
 
 ## Open risks
 
-- Porto wagmi connector on Ethereum Sepolia — confirmed for Base Sepolia in their example, not yet verified on Ethereum Sepolia. First action during wagmi setup: spike. Fallback: Base Sepolia.
 - Streaming SDK messages → SSE: small adapter mapping `assistant` partials → `chat.delta`, `tool_use` → `tool.call`, tool-result-driven `ui.render` events emitted from the widget MCP via captured `emit`. Watch ordering; flush after every event.
 - In-process MCPs in Next.js dev mode: HMR may double-instantiate. Construct MCPs per-request inside the route handler (not module-scope) to avoid leaks.
 - Summary→Execute round-trip via follow-up POST: agent must have access to the prepared call data in turn 2. Solutions in priority order: (a) `summaryId` keyed in a server-side request-scoped Map populated when `prepare_deposit` runs; (b) widget posts the full `prepared` payload back in the follow-up wish body. Pick (a) first; (b) is fallback.
