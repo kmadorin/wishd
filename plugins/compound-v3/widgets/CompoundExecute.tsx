@@ -40,7 +40,13 @@ export function CompoundExecute(props: CompoundExecuteProps) {
   const portoConnector = connectors[0];
   const { connect } = useConnect();
   const { switchChain } = useSwitchChain();
-  const { sendCalls, data: sendData, error: sendError, isPending: sendPending } = useSendCalls();
+  const {
+    sendCalls,
+    data: sendData,
+    error: sendError,
+    isPending: sendPending,
+    reset: resetSend,
+  } = useSendCalls();
   const callsStatus = useWaitForCallsStatus({ id: sendData?.id });
 
   const [phase, setPhase] = useState<Phase>("ready");
@@ -96,6 +102,7 @@ export function CompoundExecute(props: CompoundExecuteProps) {
       return;
     }
     if (phase === "ready" || phase === "error") {
+      resetSend();
       sendCalls({ calls: props.calls as any });
     }
   }
