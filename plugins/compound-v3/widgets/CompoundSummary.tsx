@@ -19,13 +19,11 @@ export type CompoundSummaryProps = {
 export function CompoundSummary(props: CompoundSummaryProps) {
   const [submitting, setSubmitting] = useState(false);
 
-  async function execute() {
+  function execute() {
     setSubmitting(true);
-    try {
-      await fetch("/api/chat", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
+    window.dispatchEvent(
+      new CustomEvent("wishd:wish", {
+        detail: {
           wish: `execute deposit ${props.summaryId}`,
           account: { address: props.user, chainId: props.chainId },
           context: {
@@ -43,11 +41,12 @@ export function CompoundSummary(props: CompoundSummaryProps) {
               calls: props.calls,
             },
           },
-        }),
-      });
-    } finally {
-      setSubmitting(false);
-    }
+        },
+      }),
+    );
+    // Re-enable after a tick — the StreamBus runs the request; the new
+    // compound-execute widget rendering is the user's "next state."
+    setTimeout(() => setSubmitting(false), 1000);
   }
 
   return (
