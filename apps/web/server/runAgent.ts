@@ -7,6 +7,7 @@ import { createWidgetRendererMcp } from "./mcps/widgetRenderer";
 import { buildSystemPrompt } from "./systemPrompt";
 import { listIntents } from "./intentRegistry";
 import { khTokenStore } from "./keepers/khTokenStore";
+import { buildKeeperMcpServer } from "./keepers/agentTools";
 
 export type RunMode = "default" | "narrate-only";
 
@@ -51,6 +52,10 @@ export async function runAgent(input: RunAgentInput): Promise<void> {
   const mcpServers: Record<string, any> = { widget: widgetMcp };
   for (const m of pluginMcps) mcpServers[m.serverName] = m.server;
 
+  // Inline MCP server exposing keeper tools (recommend_keeper, propose_delegation, inject_keeper_offer).
+  // Tools are reachable as mcp__wishd_keepers__<name>.
+  mcpServers.wishd_keepers = buildKeeperMcpServer({ emit });
+
   // Remote MCP — KeeperHub. SDK handles OAuth discovery when the user authenticates via Claude Code.
   // The Bearer header here covers the env-token demo path; in full OAuth the SDK will prompt the user.
   mcpServers.keeperhub = {
@@ -74,7 +79,7 @@ export async function runAgent(input: RunAgentInput): Promise<void> {
         allowedTools,
         permissionMode: "bypassPermissions",
         allowDangerouslySkipPermissions: true,
-        maxTurns: mode === "narrate-only" ? 1 : 3,
+        maxTurns: mode === "narrate-only" ? 1 : 4, // bumped from 3 to allow recommend → propose → inject
       },
     });
 
