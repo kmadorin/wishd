@@ -38,9 +38,8 @@ export function CompoundExecute(props: CompoundExecuteProps) {
   const portoConnector = connectors[0];
   const { connect } = useConnect();
   const { switchChain } = useSwitchChain();
-  const sendCalls = useSendCalls();
-  const [bundleId, setBundleId] = useState<`0x${string}` | undefined>();
-  const callsStatus = useWaitForCallsStatus({ id: bundleId });
+  const { sendCalls, data: sendData, error: sendError, isPending: sendPending } = useSendCalls();
+  const callsStatus = useWaitForCallsStatus({ id: sendData?.id });
 
   const [phase, setPhase] = useState<Phase>("ready");
   const [errMsg, setErrMsg] = useState<string | null>(null);
@@ -63,22 +62,22 @@ export function CompoundExecute(props: CompoundExecuteProps) {
       setErrMsg("transaction failed");
       return;
     }
-    if (sendCalls.isPending || (bundleId && callsStatus.isLoading)) {
+    if (sendPending || (sendData?.id && callsStatus.isLoading)) {
       setPhase("submitting");
       return;
     }
-    if (sendCalls.error) {
+    if (sendError) {
       setPhase("error");
-      setErrMsg(sendCalls.error.message);
+      setErrMsg(sendError.message);
       return;
     }
     setPhase("ready");
   }, [
     isConnected,
     chainId,
-    sendCalls.isPending,
-    sendCalls.error,
-    bundleId,
+    sendPending,
+    sendError,
+    sendData?.id,
     callsStatus.data?.status,
     callsStatus.isLoading,
     props.chainId,
@@ -95,13 +94,7 @@ export function CompoundExecute(props: CompoundExecuteProps) {
       return;
     }
     if (phase === "ready" || phase === "error") {
-      try {
-        const res = await sendCalls.mutateAsync({ calls: props.calls as any });
-        setBundleId(res.id as `0x${string}`);
-      } catch (err) {
-        setErrMsg(err instanceof Error ? err.message : String(err));
-        setPhase("error");
-      }
+      sendCalls({ calls: props.calls as any });
     }
   }
 
