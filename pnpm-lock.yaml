@@ -25,6 +25,9 @@ importers:
       '@wishd/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
+      '@wishd/plugin-uniswap':
+        specifier: workspace:*
+        version: link:../../plugins/uniswap
       '@wishd/tokens':
         specifier: workspace:*
         version: link:../../packages/wishd-tokens

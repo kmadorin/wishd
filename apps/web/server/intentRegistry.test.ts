@@ -39,4 +39,9 @@ describe("intentRegistry", () => {
     const found = await getIntentSchema("compound-v3.deposit");
     expect(found?.widget).toBe("compound-summary");
   });
+
+  it("uniswap.swap schema is available with widget swap-summary", async () => {
+    const found = await getIntentSchema("uniswap.swap");
+    expect(found?.widget).toBe("swap-summary");
+  });
 });
