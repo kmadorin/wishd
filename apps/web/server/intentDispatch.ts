@@ -6,6 +6,9 @@ import {
   type PreparedDeposit,
   type PreparedWithdraw,
 } from "@plugins/compound-v3/prepare";
+import { prepareSwap } from "@plugins/uniswap/prepare";
+import { CHAIN_ID_BY_SLUG } from "@plugins/uniswap/intents";
+import { uniswapStrategies, publicClientFor } from "./uniswapClients";
 import { getIntentSchema } from "./intentRegistry";
 
 export type DispatchInput = {
@@ -14,7 +17,7 @@ export type DispatchInput = {
 };
 
 export type DispatchOutput = {
-  prepared: PreparedDeposit | PreparedWithdraw;
+  prepared: PreparedDeposit | PreparedWithdraw | Record<string, unknown>;
   widget: { id: string; type: string; slot: "flow"; props: Record<string, unknown> };
 };
 
@@ -51,6 +54,45 @@ export async function dispatchIntent(
 
   const amount = requireAmount(input.body);
   const user = requireAddress(input.body);
+
+  if (intent === "uniswap.swap") {
+    const chainSlug = String(input.body.chain ?? "");
+    const chainId = CHAIN_ID_BY_SLUG[chainSlug];
+    if (!chainId) throw new Error(`unsupported chain: ${chainSlug}`);
+    const slippageBps = typeof input.body.slippageBps === "number" ? input.body.slippageBps : 50;
+    const prepared = await prepareSwap({
+      values: {
+        amount:   requireAmount(input.body),
+        assetIn:  String(input.body.assetIn),
+        assetOut: String(input.body.assetOut),
+        chain:    chainSlug,
+      },
+      address:  requireAddress(input.body),
+      slippageBps,
+      strategies:   uniswapStrategies(chainId),
+      publicClient: publicClientFor(chainId),
+    });
+    return {
+      prepared: prepared as any,
+      widget: {
+        id: newWidgetId(),
+        type: schema.widget,
+        slot: "flow",
+        props: {
+          config: prepared.config,
+          initialQuote: prepared.initialQuote,
+          initialQuoteAt: prepared.initialQuoteAt,
+          approvalCall: prepared.approvalCall,
+          balance: prepared.balance,
+          insufficient: prepared.insufficient,
+          liquidityNote: prepared.liquidityNote,
+          keeperOffers: prepared.keeperOffers,
+          summaryId: newWidgetId(),
+        },
+      },
+    };
+  }
+
   const chainId = requireChainId(input.body);
 
   if (intent === "compound-v3.deposit") {

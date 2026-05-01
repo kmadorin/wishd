@@ -14,6 +14,8 @@ import {
 } from "@/components/primitives/SentenceBox";
 import { CLIENT_INTENT_SCHEMAS } from "@/lib/intentRegistry.client";
 import { prepareIntent, PrepareError } from "@/lib/prepareIntent";
+import { AssetPicker } from "./AssetPicker";
+import { CHAIN_ID_BY_SLUG } from "@plugins/uniswap/intents";
 
 const CHIPS: Array<{ label: string; intent: string; values: Record<string, string> }> = [
   {
@@ -277,6 +279,7 @@ export function WishComposer() {
                       onOpenChange={(o) => setOpenPillKey(o ? field.key : null)}
                       onChange={(v) => setField(field.key, v)}
                       disabled={busy}
+                      chainId={CHAIN_ID_BY_SLUG[values.chain ?? ""] ?? CHAIN_ID_BY_SLUG["ethereum-sepolia"]}
                     />
                   );
                 })
@@ -364,6 +367,7 @@ function FieldPill({
   onOpenChange,
   onChange,
   disabled,
+  chainId,
 }: {
   field: IntentField;
   value: string;
@@ -371,6 +375,7 @@ function FieldPill({
   onOpenChange: (open: boolean) => void;
   onChange: (v: string) => void;
   disabled?: boolean;
+  chainId?: number;
 }) {
   if (field.type === "amount") {
     return (
@@ -382,6 +387,19 @@ function FieldPill({
         onChange={onChange}
         disabled={disabled}
         inputWidthCh={Math.max(4, Math.min(10, value.length || 6))}
+      />
+    );
+  }
+
+  // Asset fields with >1 option (e.g. swap): use registry-driven AssetPicker.
+  // Asset fields with exactly 1 option (e.g. Compound USDC-only): keep native ActionPill dropdown.
+  if (field.type === "asset" && field.options.length !== 1) {
+    return (
+      <AssetPicker
+        chainId={chainId ?? 11155111}
+        value={value}
+        onChange={onChange}
+        ariaLabel={ariaLabelForField(field)}
       />
     );
   }
@@ -444,6 +462,10 @@ function phrase(schema: IntentSchema, v: Record<string, string>): string {
 
 function guessFromText(t: string): { widgetType: string; amount?: string; asset?: string } {
   const lower = t.toLowerCase();
+  if (/swap|trade|exchange/.test(lower)) {
+    const m = lower.match(/(\d+(?:\.\d+)?)\s*(eth|usdc|usdt|dai|wbtc|matic|weth)?/);
+    return { widgetType: "swap-summary", amount: m?.[1], asset: m?.[2]?.toUpperCase() };
+  }
   const widgetType = /withdraw|redeem/.test(lower) ? "compound-withdraw-summary" : "compound-summary";
   const m = lower.match(/(\d+(?:\.\d+)?)\s*(usdc|usd|eth)?/);
   return { widgetType, amount: m?.[1], asset: m?.[2]?.toUpperCase() };

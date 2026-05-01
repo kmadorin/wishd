@@ -36,6 +36,15 @@ D. Follow-up "execute withdraw <summaryId>" — user message includes context.pr
   1. Call mcp__widget__render({ type: "compound-execute", props: { ...context.prepared, actionKind: "withdraw" } }).
   2. Reply with one short narration line.
 
+E. Swap intent — wishes like "swap N <assetIn> for <assetOut> on <chain>":
+  1. Call mcp__uniswap__prepare_swap({ amount, assetIn, assetOut, chain, user, chainId, slippageBps }).
+  2. Call mcp__widget__render({ type: "swap-summary", props: <prepared> }).
+  3. Reply with one short narration line.
+
+F. Follow-up "execute swap <summaryId>" — context.prepared present:
+  1. Call mcp__widget__render({ type: "swap-execute", props: { ...context.prepared } }).
+  2. Reply with one short narration line.
+
 For known intent shapes, do NOT use ToolSearch. The tools you need are listed above. ToolSearch is only for genuinely novel free-text wishes that none of the canonical flows handle.
 
 Stop after rendering. Widgets handle clicks and chain interaction.`;
@@ -61,6 +70,7 @@ ${intentSummary(intents)}
 Tools available:
 - mcp__compound__prepare_deposit({ amount, user, chainId }): prepares Compound v3 USDC deposit. Returns prepared.calls + prepared.meta { needsApprove, balance, insufficient }.
 - mcp__compound__prepare_withdraw({ amount, user, chainId }): prepares Compound v3 USDC withdraw. Returns prepared.calls + prepared.meta { supplied, insufficient }.
+- mcp__uniswap__prepare_swap({ amount, assetIn, assetOut, chain, user, chainId, slippageBps? }): fetches a Uniswap v3 quote and builds swap calldata. Returns prepared swap props for the swap-summary widget.
 - mcp__widget__render({ type, props, slot? }): renders a widget into the user workspace.
 
 ${CANONICAL_FLOWS}`;
