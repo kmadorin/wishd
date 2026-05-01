@@ -5,19 +5,26 @@ import type { ServerEvent } from "@wishd/plugin-sdk";
 import { loadPlugins } from "./pluginLoader";
 import { createWidgetRendererMcp } from "./mcps/widgetRenderer";
 import { buildSystemPrompt } from "./systemPrompt";
+import { listIntents } from "./intentRegistry";
+
+export type RunMode = "default" | "narrate-only";
 
 export type RunAgentInput = {
   wish: string;
   account: { address: `0x${string}`; chainId: number };
   context?: Record<string, unknown>;
+  mode?: RunMode;
   emit: (e: ServerEvent) => void;
 };
 
+const HAIKU = "claude-haiku-4-5-20251001";
+
 export async function runAgent(input: RunAgentInput): Promise<void> {
-  const { wish, account, context, emit } = input;
+  const { wish, account, context, mode = "default", emit } = input;
 
   const publicClient = createPublicClient({ chain: sepolia, transport: http() });
   const { plugins, allowedTools } = await loadPlugins();
+  const intents = await listIntents();
 
   const pluginCtx = { publicClient, emit };
   const pluginMcps = plugins.map((p) => p.mcp(pluginCtx));
@@ -26,20 +33,22 @@ export async function runAgent(input: RunAgentInput): Promise<void> {
   const mcpServers: Record<string, any> = { widget: widgetMcp };
   for (const m of pluginMcps) mcpServers[m.serverName] = m.server;
 
-  const systemPrompt = await buildSystemPrompt();
-
-  const userMessage = JSON.stringify({ wish, account, context: context ?? {} });
+  const systemPrompt = await buildSystemPrompt({ mode, intents });
+  const userMessage = JSON.stringify({ wish, account, context: context ?? {}, mode });
+  const t0 = Date.now();
+  let firstTokenLogged = false;
 
   try {
     const stream = query({
       prompt: userMessage,
       options: {
         systemPrompt,
+        model: HAIKU,
         mcpServers,
         allowedTools,
         permissionMode: "bypassPermissions",
         allowDangerouslySkipPermissions: true,
-        maxTurns: 4,
+        maxTurns: mode === "narrate-only" ? 1 : 3,
       },
     });
 
@@ -47,14 +56,23 @@ export async function runAgent(input: RunAgentInput): Promise<void> {
       if (msg.type === "assistant" && msg.message?.content) {
         for (const block of msg.message.content) {
           if (block.type === "text" && block.text) {
+            if (!firstTokenLogged) {
+              firstTokenLogged = true;
+              console.info(JSON.stringify({ tag: "wishd:perf", event: "agent-first-token-ms", mode, ms: Date.now() - t0 }));
+            }
             emit({ type: "chat.delta", delta: block.text });
           }
           if (block.type === "tool_use") {
+            if (mode === "narrate-only") {
+              console.warn(`narrate-only mode emitted tool_use ${block.name}; ignoring`);
+              continue;
+            }
             emit({ type: "tool.call", name: block.name, input: block.input });
           }
         }
       }
       if (msg.type === "result") {
+        console.info(JSON.stringify({ tag: "wishd:perf", event: "agent-final-ms", mode, ms: Date.now() - t0 }));
         emit({ type: "result", ok: msg.subtype === "success", cost: msg.total_cost_usd });
       }
     }
