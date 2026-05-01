@@ -18,7 +18,7 @@ export async function POST(req: Request) {
       assetIn: string;
       assetOut: string;
     };
-    const tag = (body.chainId === 11155111 ? "direct-v3" : "trading-api") as const;
+    const tag: "direct-v3" | "trading-api" = body.chainId === 11155111 ? "direct-v3" : "trading-api";
     const strat = uniswapStrategies(body.chainId);
     const decIn = resolveAsset(body.chainId, body.assetIn).decimals;
     const cfg = {
