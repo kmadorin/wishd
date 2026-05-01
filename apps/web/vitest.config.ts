@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
+      "@": path.resolve(__dirname, "."),
       "@plugins": path.resolve(__dirname, "../../plugins"),
       "@keepers": path.resolve(__dirname, "../../keepers"),
       "@wishd/tokens": path.resolve(__dirname, "../../packages/wishd-tokens/src/index.ts"),
