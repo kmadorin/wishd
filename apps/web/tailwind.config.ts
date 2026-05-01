@@ -35,8 +35,29 @@ const config: Config = {
       borderRadius: {
         sm: "var(--r-sm)",
         DEFAULT: "var(--r)",
-        lg: "var(--r-lg)",
+        md: "14px",
+        lg: "var(--r-lg)",   // 20
+        xl: "18px",          // widget card
+        "2xl": "22px",       // step card
         pill: "var(--r-pill)",
+      },
+      boxShadow: {
+        card: "4px 4px 0 var(--ink)",
+        cardSm: "3px 3px 0 var(--ink)",
+        cardLg: "6px 6px 0 var(--ink)",
+        pill: "2px 2px 0 var(--ink)",
+      },
+      keyframes: {
+        fadeUp: { from: { opacity: "0", transform: "translateY(10px)" }, to: { opacity: "1", transform: "translateY(0)" } },
+        blink:  { "0%,80%,100%": { opacity: "0.2" }, "40%": { opacity: "1" } },
+        pulse:  { "0%,100%": { boxShadow: "0 0 0 0 rgba(232,154,107,0.4)" }, "50%": { boxShadow: "0 0 0 5px rgba(232,154,107,0)" } },
+        spin:   { to: { transform: "rotate(360deg)" } },
+      },
+      animation: {
+        fadeUp: "fadeUp 0.25s ease forwards",
+        blink:  "blink 1.2s ease-in-out infinite",
+        pulse:  "pulse 1.4s ease infinite",
+        spin:   "spin 1s linear infinite",
       },
     },
   },
