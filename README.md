@@ -7,7 +7,9 @@ Agentic DeFi assistant. v0 vertical slice: deposit USDC into Compound v3 on Sepo
 ```bash
 pnpm install
 cp .env.local.example .env.local
-# edit .env.local: ANTHROPIC_API_KEY=sk-ant-...
+# Auth — pick one:
+#   CLAUDE_CODE_OAUTH_TOKEN=...   (recommended — uses your Claude Pro/Max sub; get via `claude setup-token`)
+#   ANTHROPIC_API_KEY=sk-ant-...  (pay-per-token API billing)
 pnpm dev
 ```
 
