@@ -1719,7 +1719,17 @@ Read `apps/web/app/providers.tsx`. Confirm wagmi v2 mounts a `QueryClientProvide
 
 Drives:
 - Local state for editable `amountIn`, `assetIn`, `assetOut`, `slippageBps`. `useDebounce(amountIn, 300)`.
-- `useQuery({ queryKey: ["uniswap.quote", chainId, tokenIn, tokenOut, debouncedAmount, swapper], queryFn: ({signal}) => fetch("/api/uniswap/quote", { method:"POST", headers:{"content-type":"application/json"}, body: JSON.stringify({...}), signal }).then(r => { if (!r.ok) throw new Error(...); return r.json(); }), initialData: props.initialQuote, initialDataUpdatedAt: props.initialQuoteAt, refetchInterval: 15_000, refetchIntervalInBackground: false, refetchOnWindowFocus: true, staleTime: 10_000, placeholderData: keepPreviousData, retry: (n, err) => n < 2 && !is4xx(err) })`.
+- Define a small `HttpError` and `is4xx` helper at the top of the file:
+  ```ts
+  class HttpError extends Error {
+    constructor(public status: number, message: string) { super(message); }
+  }
+  const is4xx = (err: unknown): boolean =>
+    err instanceof HttpError ? err.status >= 400 && err.status < 500
+    : err instanceof Error    ? /\b4\d\d\b/.test(err.message)
+    : false;
+  ```
+- `useQuery({ queryKey: ["uniswap.quote", chainId, tokenIn, tokenOut, debouncedAmount, swapper], queryFn: async ({signal}) => { const r = await fetch("/api/uniswap/quote", { method:"POST", headers:{"content-type":"application/json"}, body: JSON.stringify({ chainId, tokenIn, tokenOut, amountIn: debouncedAmount, swapper, slippageBps, assetIn, assetOut }), signal }); if (!r.ok) { const body = await r.json().catch(() => ({})); throw new HttpError(r.status, body.error ?? r.statusText); } return r.json() as Promise<SwapQuote>; }, initialData: props.initialQuote, initialDataUpdatedAt: props.initialQuoteAt, refetchInterval: 15_000, refetchIntervalInBackground: false, refetchOnWindowFocus: true, staleTime: 10_000, placeholderData: keepPreviousData, retry: (n, err) => n < 2 && !is4xx(err) })`.
 - Render `<StepCard step="STEP 02" title="your swap, materialized" sub="tweak amounts here. AI re-checks live.">` containing `<WidgetCard>`:
   - `<PaySection>` with editable amount input, `<AssetPicker chainId={config.chainId} value={assetIn} onChange={...}/>`, balance line.
   - `<SwapDir>` flip — swaps assetIn/assetOut in local state (changes queryKey → fresh quote).
