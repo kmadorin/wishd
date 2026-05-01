@@ -6,12 +6,17 @@ const sharedFields: IntentSchema["fields"] = [
   { key: "chain", type: "chain", required: true, default: "ethereum-sepolia", options: ["ethereum-sepolia"] },
 ];
 
+const sharedConnectors: NonNullable<IntentSchema["connectors"]> = {
+  chain: "on",
+};
+
 export const compoundIntents: IntentSchema[] = [
   {
     intent: "compound-v3.deposit",
     verb: "deposit",
     description: "supply tokens to earn yield",
     fields: sharedFields,
+    connectors: sharedConnectors,
     widget: "compound-summary",
     slot: "flow",
   },
@@ -20,6 +25,7 @@ export const compoundIntents: IntentSchema[] = [
     verb: "withdraw",
     description: "redeem tokens you previously supplied",
     fields: sharedFields,
+    connectors: sharedConnectors,
     widget: "compound-withdraw-summary",
     slot: "flow",
   },
