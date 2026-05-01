@@ -1,9 +1,9 @@
 "use client";
 
-import { WagmiProvider } from "wagmi";
+import { type State, WagmiProvider } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { wagmiConfig } from "@/lib/wagmi";
+import { getConfig } from "@/lib/wagmi";
 
 // wagmi/porto sometimes ship bigints into the EIP-5792 RPC payload that
 // the wallet extension JSON.stringify cannot handle natively.
@@ -13,10 +13,16 @@ if (typeof window !== "undefined" && !(BigInt.prototype as any).toJSON) {
   };
 }
 
-export function Providers({ children }: { children: ReactNode }) {
+type Props = {
+  children: ReactNode;
+  initialState: State | undefined;
+};
+
+export function Providers({ children, initialState }: Props) {
+  const [config] = useState(() => getConfig());
   const [qc] = useState(() => new QueryClient());
   return (
-    <WagmiProvider config={wagmiConfig}>
+    <WagmiProvider config={config} initialState={initialState}>
       <QueryClientProvider client={qc}>{children}</QueryClientProvider>
     </WagmiProvider>
   );

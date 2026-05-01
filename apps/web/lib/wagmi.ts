@@ -1,18 +1,24 @@
-import { createConfig, http } from "wagmi";
+import { cookieStorage, createConfig, createStorage, http } from "wagmi";
 import { sepolia } from "wagmi/chains";
 import { porto } from "porto/wagmi";
 
-export const wagmiConfig = createConfig({
-  chains: [sepolia],
-  connectors: [porto()],
-  transports: {
-    [sepolia.id]: http(),
-  },
-  ssr: true,
-});
+export function getConfig() {
+  return createConfig({
+    chains: [sepolia],
+    connectors: [porto()],
+    multiInjectedProviderDiscovery: false,
+    storage: createStorage({ storage: cookieStorage }),
+    transports: {
+      [sepolia.id]: http(),
+    },
+    ssr: true,
+  });
+}
+
+export const wagmiConfig = getConfig();
 
 declare module "wagmi" {
   interface Register {
-    config: typeof wagmiConfig;
+    config: ReturnType<typeof getConfig>;
   }
 }
