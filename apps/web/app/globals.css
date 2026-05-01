@@ -1,0 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Caveat:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg:       #FBF4E8;
+  --bg-2:     #F4EAD5;
+  --surface:  #FFFCF3;
+  --surface-2:#FFFFFF;
+  --ink:      #1F1B16;
+  --ink-2:    #5A4F40;
+  --ink-3:    #9A8E78;
+  --accent:   #E89A6B;
+  --accent-2: #FFD9C2;
+  --mint:     #B8E6C9;
+  --mint-2:   #DCF1E2;
+  --pink:     #F5C2C7;
+  --warn:     #F5DC8A;
+  --warn-2:   #FAEEBC;
+  --good:     #9FD9B0;
+  --bad:      #E89999;
+  --rule:     #E5DAC0;
+  --shadow:   rgba(31,27,22,0.08);
+  --r-sm:     6px;
+  --r:        12px;
+  --r-lg:     20px;
+  --r-pill:   999px;
+}
+
+html { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; color: var(--ink); }
+body {
+  min-height: 100vh; position: relative; overflow-x: hidden;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(232,154,107,0.07) 0, rgba(232,154,107,0.07) 280px, transparent 281px),
+    radial-gradient(circle at 88% 78%, rgba(184,230,201,0.1) 0, rgba(184,230,201,0.1) 320px, transparent 321px),
+    radial-gradient(circle at 50% 110%, rgba(245,220,138,0.08) 0, rgba(245,220,138,0.08) 380px, transparent 381px),
+    var(--bg);
+}
+
+.page { position: relative; z-index: 1; max-width: 760px; margin: 0 auto; padding: 0 20px 80px; }
