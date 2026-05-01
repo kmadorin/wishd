@@ -1,6 +1,7 @@
 import { WishComposer } from "@/components/wish/WishComposer";
 import { StepStack } from "@/components/workspace/StepStack";
 import { StreamBus } from "@/components/wish/StreamBus";
+import { ChatBubble } from "@/components/wish/ChatBubble";
 
 export default function Page() {
   return (
@@ -11,6 +12,7 @@ export default function Page() {
         <span className="text-sm text-ink-2">defi by wishing it</span>
       </header>
       <WishComposer />
+      <ChatBubble />
       <StepStack />
     </main>
   );
