@@ -422,6 +422,7 @@ function FieldPill({
 function pillVariantFor(field: IntentField): ActionPillVariant {
   if (field.type === "amount") return "amount";
   if (field.type === "asset") return "from";
+  if (field.type === "select" && field.key.toLowerCase().includes("protocol")) return "protocol";
   if (field.key.toLowerCase().includes("protocol")) return "protocol";
   return "chain";
 }
@@ -438,6 +439,8 @@ function labelForValue(v: string): string {
 function ariaLabelForField(field: IntentField): string {
   if (field.type === "amount") return "Enter amount";
   if (field.type === "asset") return "Select asset";
+  if (field.type === "select" && field.key.toLowerCase().includes("protocol")) return "Select protocol";
+  if (field.type === "select") return `Select ${field.key}`;
   if (field.key.toLowerCase().includes("protocol")) return "Select protocol";
   return "Select chain";
 }
