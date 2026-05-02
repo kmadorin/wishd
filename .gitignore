@@ -11,3 +11,6 @@ coverage/
 
 # Next.js dev HTTPS certificates
 apps/web/certificates/
+
+# Superpowers brainstorm artifacts (session HTML/state)
+.superpowers/
