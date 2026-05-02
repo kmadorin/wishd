@@ -52,6 +52,27 @@ export async function dispatchIntent(
   const schema = await getIntentSchema(intent);
   if (!schema) throw new Error(`unknown intent: ${intent}`);
 
+  if (intent.startsWith("demo.")) {
+    const widgetTypeByIntent: Record<string, string> = {
+      "demo.borrow":     "borrow-demo",
+      "demo.earn":       "earn-demo",
+      "demo.bridge":     "bridge-demo",
+      "demo.find-vault": "earn-demo",
+    };
+    const widgetType = widgetTypeByIntent[intent];
+    if (!widgetType) throw new Error(`unknown intent: ${intent}`);
+    const { address: _address, ...rest } = input.body;
+    return {
+      prepared: { kind: "demo", intent } as Record<string, unknown>,
+      widget: {
+        id: newWidgetId(),
+        type: widgetType,
+        slot: "flow",
+        props: rest as Record<string, unknown>,
+      },
+    };
+  }
+
   const amount = requireAmount(input.body);
   const user = requireAddress(input.body);
 
