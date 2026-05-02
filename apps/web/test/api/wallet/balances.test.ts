@@ -17,6 +17,22 @@ describe("GET /api/wallet/balances", () => {
     expect(res.status).toBe(400);
   });
 
+  it("400s when chainId is missing", async () => {
+    const req = new Request(
+      "http://x/api/wallet/balances?address=0x0000000000000000000000000000000000000001&tokens=ETH",
+    );
+    const res = await GET(req);
+    expect(res.status).toBe(400);
+  });
+
+  it("400s when chainId is non-numeric", async () => {
+    const req = new Request(
+      "http://x/api/wallet/balances?address=0x0000000000000000000000000000000000000001&chainId=abc&tokens=ETH",
+    );
+    const res = await GET(req);
+    expect(res.status).toBe(400);
+  });
+
   it("returns native + erc20 balances scaled by decimals", async () => {
     const fake = {
       getBalance: vi.fn().mockResolvedValue(842_000_000_000_000_000n), // 0.842 ETH
