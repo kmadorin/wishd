@@ -46,14 +46,12 @@ export function WishComposer() {
   const [mode, setMode] = useState<"structured" | "freetext">("structured");
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [intentId, setIntentId] = useState(CLIENT_INTENT_SCHEMAS[0]?.intent ?? "");
+  const [intentId, setIntentId] = useState("");
   const schema = useMemo(
     () => CLIENT_INTENT_SCHEMAS.find((s) => s.intent === intentId),
     [intentId],
   );
-  const [values, setValues] = useState<Record<string, string>>(() =>
-    CLIENT_INTENT_SCHEMAS[0] ? defaultsFor(CLIENT_INTENT_SCHEMAS[0]) : {},
-  );
+  const [values, setValues] = useState<Record<string, string>>({});
   const [openPillKey, setOpenPillKey] = useState<string | null>(null);
   const { address, chainId, isConnected } = useAccount();
   const ws = useWorkspace();
