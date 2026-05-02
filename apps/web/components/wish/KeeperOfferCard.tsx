@@ -62,8 +62,8 @@ export function KeeperOfferCard(props: Props): ReactElement {
           >deploy ✦</button>
           <button
             type="button"
-            disabled={comingSoon}
-            title={comingSoon ? "coming soon" : undefined}
+            disabled
+            title="customize coming soon"
             className="bg-transparent border-[1.5px] border-rule rounded-pill px-3 py-1 text-xs text-ink-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >customize</button>
         </div>
