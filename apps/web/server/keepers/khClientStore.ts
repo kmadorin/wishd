@@ -4,16 +4,17 @@ type KhClient = {
   registeredFor: string; // redirectUri this client was registered for
 };
 
-let current: KhClient | null = null;
+const g = globalThis as unknown as { __khClient?: { value: KhClient | null } };
+const slot = (g.__khClient ??= { value: null });
 
 export const khClientStore = {
   get(): KhClient | null {
-    return current;
+    return slot.value;
   },
   set(client: KhClient): void {
-    current = client;
+    slot.value = client;
   },
   clear(): void {
-    current = null;
+    slot.value = null;
   },
 };

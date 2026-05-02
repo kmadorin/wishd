@@ -6,7 +6,8 @@ type AuthStateEntry = {
 
 const TTL_MS = 5 * 60 * 1000;
 
-const store = new Map<string, AuthStateEntry>();
+const g = globalThis as unknown as { __khAuthState?: Map<string, AuthStateEntry> };
+const store: Map<string, AuthStateEntry> = (g.__khAuthState ??= new Map());
 
 export const khAuthStateStore = {
   put(state: string, data: AuthStateEntry): void {

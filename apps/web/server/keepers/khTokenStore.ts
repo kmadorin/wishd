@@ -5,22 +5,24 @@ type Token = {
   scope: string;
 };
 
-let current: Token | null = null;
+const g = globalThis as unknown as { __khToken?: { value: Token | null } };
+const slot = (g.__khToken ??= { value: null });
 
 export const khTokenStore = {
   get(): Token | null {
-    if (!current) return null;
-    if (Date.now() >= current.expiresAt - 5_000) return null; // expired or near-expired
-    return current;
+    const t = slot.value;
+    if (!t) return null;
+    if (Date.now() >= t.expiresAt - 5_000) return null;
+    return t;
   },
   // Returns the raw record without expiry check — needed for refresh_token grant.
   getRaw(): Token | null {
-    return current;
+    return slot.value;
   },
   set(t: Token): void {
-    current = t;
+    slot.value = t;
   },
   clear(): void {
-    current = null;
+    slot.value = null;
   },
 };
