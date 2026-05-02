@@ -26,7 +26,10 @@ export function StreamBus() {
         context: detail.context,
         onEvent: (ev) => {
           if (ev.type === "tool.call") appendAgentEvent({ kind: "tool.call", name: ev.name, input: ev.input });
-          if (ev.type === "chat.delta") appendNarration(ev.delta);
+          if (ev.type === "chat.delta") {
+            appendNarration(ev.delta);
+            appendAgentEvent({ kind: "delta", text: ev.delta });
+          }
           if (ev.type === "ui.render") {
             appendWidget({
               id: ev.widget.id,

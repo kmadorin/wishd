@@ -2,12 +2,19 @@ import { describe, it, expect } from "vitest";
 import { compoundIntents } from "./intents";
 
 describe("compound-v3 intents", () => {
-  it("exports deposit + withdraw with shared field shape", () => {
+  it("exports deposit, withdraw, and lend intents", () => {
     expect(compoundIntents.map((i) => i.intent)).toEqual([
       "compound-v3.deposit",
       "compound-v3.withdraw",
+      "compound-v3.lend",
     ]);
-    for (const i of compoundIntents) {
+  });
+
+  it("deposit and withdraw share field shape", () => {
+    const depositWithdraw = compoundIntents.filter(
+      (i) => i.intent === "compound-v3.deposit" || i.intent === "compound-v3.withdraw"
+    );
+    for (const i of depositWithdraw) {
       expect(i.fields.map((f) => f.type)).toEqual(["amount", "asset", "chain"]);
       const asset = i.fields.find((f) => f.key === "asset")!;
       expect(asset.type).toBe("asset");
