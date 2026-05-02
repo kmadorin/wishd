@@ -12,7 +12,8 @@ export type WidgetSlot = "flow" | "results" | "pinned" | "panel";
 export type IntentField =
   | { key: string; type: "amount"; required?: boolean; default?: string }
   | { key: string; type: "asset"; required?: boolean; default?: string; options: string[] }
-  | { key: string; type: "chain"; required?: boolean; default: string; options: string[] };
+  | { key: string; type: "chain"; required?: boolean; default: string; options: string[] }
+  | { key: string; type: "select"; required?: boolean; default: string; options: string[] };
 
 export type IntentSchema = {
   intent: string;

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { definePlugin, defineKeeper } from "./index";
-import type { Plugin, Keeper, Address } from "./index";
+import type { Plugin, Keeper, Address, IntentField, IntentSchema } from "./index";
 
 describe("plugin-sdk", () => {
   it("definePlugin returns input unchanged", () => {
@@ -69,6 +69,26 @@ import type {
   KeeperOffer,
   KeeperState,
 } from ".";
+
+describe("IntentField select variant", () => {
+  it("accepts a select field with options + default", () => {
+    const f: IntentField = {
+      key: "protocol",
+      type: "select",
+      required: true,
+      default: "compound-v3",
+      options: ["compound-v3", "aave-v3", "morpho", "spark"],
+    };
+    const s: IntentSchema = {
+      intent: "x.y",
+      verb: "x",
+      description: "x",
+      fields: [f],
+      widget: "w",
+    };
+    expect(s.fields[0].type).toBe("select");
+  });
+});
 
 describe("keeper types", () => {
   it("KeeperManifest carries id and appliesTo", () => {
