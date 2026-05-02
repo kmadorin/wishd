@@ -34,3 +34,30 @@ describe("workspace store skeletons", () => {
     expect(useWorkspace.getState().widgets.map((w) => w.id)).toEqual(["x"]);
   });
 });
+
+describe("agent activity log", () => {
+  beforeEach(() => useWorkspace.getState().reset());
+
+  it("appendAgentEvent adds an entry with timestamp and tool name", () => {
+    const { appendAgentEvent } = useWorkspace.getState();
+    appendAgentEvent({ kind: "tool.call", name: "uniswap.quote", input: { foo: "bar" } });
+    const log = useWorkspace.getState().agentActivity;
+    expect(log.length).toBeGreaterThan(0);
+    expect((log[log.length - 1] as any).name).toBe("uniswap.quote");
+    expect(typeof log[log.length - 1].at).toBe("number");
+  });
+
+  it("clearAgentActivity empties the log", () => {
+    const { appendAgentEvent, clearAgentActivity } = useWorkspace.getState();
+    appendAgentEvent({ kind: "tool.call", name: "x", input: {} });
+    clearAgentActivity();
+    expect(useWorkspace.getState().agentActivity).toEqual([]);
+  });
+
+  it("reset() also clears agentActivity", () => {
+    const { appendAgentEvent, reset } = useWorkspace.getState();
+    appendAgentEvent({ kind: "tool.call", name: "x", input: {} });
+    reset();
+    expect(useWorkspace.getState().agentActivity).toEqual([]);
+  });
+});

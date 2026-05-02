@@ -16,10 +16,15 @@ export type SkeletonInit = {
   asset?: string;
 };
 
+export type AgentEvent =
+  | { kind: "tool.call"; name: string; input: unknown; at: number }
+  | { kind: "delta"; text: string; at: number };
+
 type State = {
   widgets: WidgetInstance[];
   narration: string;
   executing: boolean;
+  agentActivity: AgentEvent[];
   setExecuting: (v: boolean) => void;
   appendWidget: (w: Omit<WidgetInstance, "createdAt">) => void;
   patchWidget: (id: string, props: Record<string, unknown>) => void;
@@ -28,6 +33,8 @@ type State = {
   hydrateSkeleton: (id: string, replacement: Omit<WidgetInstance, "createdAt">) => void;
   failSkeleton: (id: string, message: string) => void;
   appendNarration: (delta: string) => void;
+  appendAgentEvent: (e: Omit<AgentEvent, "at">) => void;
+  clearAgentActivity: () => void;
   reset: () => void;
 };
 
@@ -43,6 +50,7 @@ export const useWorkspace = create<State>((set) => ({
   widgets: [],
   narration: "",
   executing: false,
+  agentActivity: [],
   setExecuting: (v) => set({ executing: v }),
   appendWidget: (w) =>
     set((s) => ({
@@ -95,5 +103,8 @@ export const useWorkspace = create<State>((set) => ({
       ),
     })),
   appendNarration: (delta) => set((s) => ({ narration: s.narration + delta })),
-  reset: () => set({ widgets: [], narration: "", executing: false }),
+  appendAgentEvent: (e) =>
+    set((s) => ({ agentActivity: [...s.agentActivity, { ...e, at: Date.now() } as AgentEvent] })),
+  clearAgentActivity: () => set({ agentActivity: [] }),
+  reset: () => set({ widgets: [], narration: "", executing: false, agentActivity: [] }),
 }));
