@@ -69,6 +69,7 @@ export function buildKeeperMcpServer(args: { emit: (e: ServerEvent) => void }) {
     {
       intentId: z.string(),
       userPortoAddress: z.string(),
+      stepCardId: z.string().optional(),
     },
     async (input): Promise<CallToolResult> => {
       const candidates = keepersForIntent(input.intentId);
@@ -100,6 +101,7 @@ export function buildKeeperMcpServer(args: { emit: (e: ServerEvent) => void }) {
               props: {
                 intent: input.intentId,
                 userPortoAddress: input.userPortoAddress,
+                stepCardId: input.stepCardId,
               },
             },
           });

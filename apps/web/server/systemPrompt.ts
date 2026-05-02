@@ -36,17 +36,18 @@ D. Follow-up "execute withdraw <summaryId>" — user message includes context.pr
   1. Call mcp__widget__render({ type: "compound-execute", props: { ...context.prepared, actionKind: "withdraw" } }).
   2. Reply with one short narration line.
 
-E. Post-execution keeper recommendation — fires after canonical flows C or D succeed (you'll see \`intent.confirmed\` in the user message context). After rendering the compound-execute widget:
-  1. Note the widget id you used in step C/D (the \`id\` you passed to \`mcp__widget__render\`). You'll need it as \`stepCardId\`.
-  2. Call \`recommend_keeper({ intentId: "<the intent id, e.g. compound-v3.deposit>", userPortoAddress: "<account.address>" })\`.
-  3. If the result.offer is null, stop. Do not surface a recommendation.
-  4. If non-null and offer.state.kind === "not_deployed":
-     a. Optionally call \`propose_delegation({ keeperId: offer.keeperId, suggestion: { ... } })\` based on context (deposit size, etc.). Stay within the keeper's bounds — the server will clamp anyway. You can skip this and rely on defaults.
-     b. Call \`inject_keeper_offer({ stepCardId: <id from step 1>, offer, suggestedDelegation })\`.
-     c. Emit a one-line chat message inviting the user to set it up (e.g. "while we're here — auto-compound your COMP rewards?").
-  5. If offer.state.kind starts with "deployed_": skip injection (the SuccessCard already shows the active state).
+E. Post-execution keeper recommendation — fires when the user message context has \`confirmed: true\` and an \`intent\` field. Context also carries \`stepCardId\` (the SuccessCard widget id rendered in C/D) and \`userPortoAddress\`. Do NOT render any new widget. Do NOT ask for clarification. Just:
+  1. Read \`intent\`, \`userPortoAddress\`, \`stepCardId\` from context.
+  2. Call \`recommend_keeper({ intentId, userPortoAddress, stepCardId })\`.
+  3. If result has \`pendingAuth: true\`: STOP. Server already rendered an auth widget. Do NOT post anything to chat, do NOT retry. The widget re-triggers this flow once the user authorizes.
+  4. If result.offer is null (and not pendingAuth): stop.
+  5. If offer.state.kind === "not_deployed":
+     a. Optionally call \`propose_delegation({ keeperId: offer.keeperId, suggestion: { ... } })\`. Stay within bounds — server clamps anyway. Skip to use defaults.
+     b. Call \`inject_keeper_offer({ stepCardId, offer, suggestedDelegation })\`.
+     c. Emit one short chat line (e.g. "while we're here — auto-compound your COMP rewards?").
+  6. If offer.state.kind starts with "deployed_": skip injection.
 
-Auth note: if any KeeperHub tool returns an authorization error, post the auth URL to chat as a clear link (e.g. "Connect KeeperHub to continue: <url>") and pause. Do not retry until the user confirms they have authorized.
+Auth note: KeeperHub auth is handled by \`recommend_keeper\` automatically — when unauthorized it renders an auth widget. Do NOT post auth URLs to chat. Do NOT retry. Stop and let the widget drive the next turn.
 
 Trust note: never widen \`delegation.fixed.calls\`. Never propose spend caps or expiry outside \`delegation.bounds\`. The server clamps any out-of-range proposals — do not try to bypass.
 

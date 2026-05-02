@@ -60,7 +60,7 @@ export function KeeperhubAuthCard({ stepCardId, intent, userPortoAddress }: Prop
         throw new Error(body.error ?? `request failed ${res.status}`);
       }
       const { authUrl } = (await res.json()) as { authUrl: string; state: string };
-      window.open(authUrl, "_blank", "width=600,height=720,noopener");
+      window.open(authUrl, "_blank", "width=600,height=720");
       // Phase stays "pending" until postMessage arrives
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : String(err));
