@@ -153,7 +153,7 @@ export function buildKeeperMcpServer(args: { emit: (e: ServerEvent) => void }) {
 
   const injectWrapped = tool(
     "inject_keeper_offer",
-    "Push a keeper offer into the success card identified by stepCardId. Replaces the empty keeperOffers slot. Must be called after recommend_keeper returned a non-null offer.",
+    "Render a keeper offer card as its own STEP 04 widget below the SuccessCard. Must be called after recommend_keeper returned a non-null offer. stepCardId is kept for context but no longer patched.",
     {
       stepCardId: z.string(),
       offer: offerSchema,
@@ -165,10 +165,12 @@ export function buildKeeperMcpServer(args: { emit: (e: ServerEvent) => void }) {
         throw new Error(`unknown keeper ${offerInput.keeperId}`);
       }
       emit({
-        type: "ui.patch",
-        id: input.stepCardId,
-        props: {
-          keeperOffers: [{ ...offerInput, suggestedDelegation: input.suggestedDelegation ?? null }],
+        type: "ui.render",
+        widget: {
+          id: randomUUID(),
+          type: "keeperhub-offer",
+          slot: "flow",
+          props: { ...offerInput, suggestedDelegation: input.suggestedDelegation ?? null },
         },
       });
       return ok({ ok: true });

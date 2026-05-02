@@ -13,6 +13,7 @@ const STEP_LABELS: Record<string, { step: string; title: string; sub?: string }>
     title: "your withdraw, materialized",
     sub: "review and execute",
   },
+  "keeperhub-auth": { step: "STEP 04", title: "automate next time?", sub: "connect KeeperHub to enable keepers" },
 };
 
 export function StepStack() {

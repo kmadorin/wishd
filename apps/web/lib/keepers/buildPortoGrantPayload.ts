@@ -30,10 +30,10 @@ export function buildPortoGrantPayload(args: {
 
   return {
     expiry,
-    feeToken: undefined,
+    feeToken: keeper.delegation.fixed.feeToken,
     key: { type: "secp256k1", publicKey: sessionPublicKey },
     permissions: {
-      calls: keeper.delegation.fixed.calls.map((to) => ({ to, signature: "" })),
+      calls: keeper.delegation.fixed.calls.map((c) => ({ to: c.to, signature: c.signature })),
       spend: proposal.spend.map((s) => ({ token: s.token, limit: s.limit, period: s.period })),
     },
   };

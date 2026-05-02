@@ -42,6 +42,8 @@ const STEP_FOR_WIDGET: Record<string, { step: string; title: string; sub?: strin
   "compound-summary": { step: "STEP 02", title: "your supply, materialized", sub: "review and execute" },
   "compound-withdraw-summary": { step: "STEP 02", title: "your withdraw, materialized", sub: "review and execute" },
   "compound-execute": { step: "STEP 03", title: "execute", sub: "native · don't close the tab" },
+  "keeperhub-auth": { step: "STEP 04", title: "automate next time?", sub: "connect KeeperHub to enable keepers" },
+  "keeperhub-offer": { step: "STEP 04", title: "automate next time?", sub: "set up a keeper" },
 };
 
 export const SKELETON_TYPE = "__skeleton__";

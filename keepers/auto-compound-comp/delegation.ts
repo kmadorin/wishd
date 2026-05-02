@@ -11,13 +11,14 @@ export const delegation: DelegationSpec = {
   kind: "porto-permissions",
   fixed: {
     calls: [
-      COMET_REWARDS_SEPOLIA,
-      COMP_SEPOLIA,
-      UNISWAP_ROUTER_SEPOLIA,
-      USDC_SEPOLIA,
-      COMET_USDC_SEPOLIA,
+      { to: COMET_REWARDS_SEPOLIA, signature: "claim(address,address,bool)" },
+      { to: COMP_SEPOLIA,          signature: "approve(address,uint256)" },
+      { to: UNISWAP_ROUTER_SEPOLIA, signature:
+          "exactInputSingle((address,address,uint24,address,uint256,uint256,uint160))" },
+      { to: USDC_SEPOLIA,          signature: "approve(address,uint256)" },
+      { to: COMET_USDC_SEPOLIA,    signature: "supply(address,uint256)" },
     ],
-    feeToken: "0x0000000000000000000000000000000000000000",
+    feeToken: { symbol: "ETH", limit: "0.05" },
   },
   expiryPolicy: { kind: "unlimited" },
   spend: {

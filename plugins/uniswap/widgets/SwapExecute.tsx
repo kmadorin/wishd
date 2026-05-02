@@ -381,7 +381,6 @@ export function SwapExecute(props: SwapExecuteProps) {
             ),
           },
         ]}
-        keeperOffers={keeperOffers.map((o, i) => ({ id: `keeper-${i}`, ...o, comingSoon: true }))}
         primaryAction={{
           label: "make another wish",
           onClick: () => resetWorkspace(),
