@@ -26,7 +26,7 @@ describe("buildPortoGrantPayload", () => {
 
   it("includes spend entries from the proposal", () => {
     if (autoCompoundComp.delegation.kind !== "porto-permissions") throw new Error();
-    const t = autoCompoundComp.delegation.fixed.calls[0]; // any
+    const t = autoCompoundComp.delegation.fixed.calls[0]!; // any
     const payload = buildPortoGrantPayload({
       keeper: autoCompoundComp,
       proposal: {

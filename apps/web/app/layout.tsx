@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { cookieToInitialState } from "wagmi";
 import { Providers } from "./providers";
 import { getConfig } from "@/lib/wagmi";
+import { KeeperDeployFlow } from "@/components/wish/KeeperDeployFlow";
 import "./globals.css";
 
 export const metadata = {
@@ -14,7 +15,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <Providers initialState={initialState}>{children}</Providers>
+        <Providers initialState={initialState}>
+          {children}
+          <KeeperDeployFlow />
+        </Providers>
       </body>
     </html>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { ReactElement } from "react";
 import { useAccount, useConnectorClient } from "wagmi";
 import { useKeeperDeploy } from "@/store/keeperDeploy";
 import { clientGetKeeper } from "@/lib/keepers/clientRegistry";
@@ -10,7 +11,7 @@ import type { SpendPeriod, Address } from "@wishd/plugin-sdk";
 
 type Phase = "review" | "granting" | "deploying" | "confirmed" | "error";
 
-export function KeeperDeployFlow(): JSX.Element | null {
+export function KeeperDeployFlow(): ReactElement | null {
   const { open, payload, close } = useKeeperDeploy();
   const { address } = useAccount();
   const { data: walletClient } = useConnectorClient();
@@ -184,7 +185,7 @@ export function KeeperDeployFlow(): JSX.Element | null {
   );
 }
 
-function Block(props: { label: string; children: React.ReactNode }): JSX.Element {
+function Block(props: { label: string; children: React.ReactNode }): ReactElement {
   return (
     <div className="border-t border-rule pt-2">
       <div className="font-mono text-[10px] tracking-[0.12em] uppercase text-ink-3 mb-1">{props.label}</div>
