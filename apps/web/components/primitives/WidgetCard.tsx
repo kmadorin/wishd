@@ -34,8 +34,11 @@ WidgetCard.SwapDir = function SwapDir({ onFlip }: { onFlip?: () => void }) {
   return (
     <div className="flex justify-center items-center p-2 bg-surface-2 border-y border-rule">
       <button
-        type="button" onClick={onFlip}
-        className="w-8 h-8 rounded-full border-[1.5px] border-ink bg-surface-2 flex items-center justify-center cursor-pointer text-base hover:bg-accent-2 hover:rotate-180 transition-transform"
+        type="button"
+        onClick={onFlip}
+        aria-label="reverse swap direction"
+        title="swap direction"
+        className="w-10 h-10 rounded-full border-[1.5px] border-ink bg-surface-2 flex items-center justify-center cursor-pointer text-lg hover:bg-accent hover:text-ink hover:rotate-180 transition-transform shadow-cardSm"
       >↕</button>
     </div>
   );
