@@ -50,11 +50,9 @@ G. Post-execution keeper recommendation — fires when the user message context 
   2. Call \`recommend_keeper({ intentId, userPortoAddress, stepCardId })\`.
   3. If result has \`pendingAuth: true\`: STOP. Server already rendered an auth widget. Do NOT post anything to chat, do NOT retry. The widget re-triggers this flow once the user authorizes.
   4. If result.offer is null (and not pendingAuth): stop.
-  5. If offer.state.kind === "not_deployed":
-     a. Optionally call \`propose_delegation({ keeperId: offer.keeperId, suggestion: { ... } })\`. Stay within bounds — server clamps anyway. Skip to use defaults.
-     b. Call \`inject_keeper_offer({ stepCardId, offer, suggestedDelegation })\`.
-     c. Emit one short chat line (e.g. "while we're here — auto-compound your COMP rewards?").
-  6. If offer.state.kind starts with "deployed_": skip injection.
+  5. If offer.state.kind === "not_deployed", optionally call \`propose_delegation({ keeperId: offer.keeperId, suggestion: { ... } })\` first. Stay within bounds — server clamps anyway. Skip to use defaults.
+  6. Call \`inject_keeper_offer({ stepCardId, offer, suggestedDelegation })\` regardless of state. SuccessCard renders the right UI per state (deploy buttons / "active ✓" / "paused").
+  7. Emit one short chat line only when state.kind === "not_deployed" (e.g. "while we're here — auto-compound your COMP rewards?"). For deployed_* states, stay silent.
 
 Auth note: KeeperHub auth is handled by \`recommend_keeper\` automatically — when unauthorized it renders an auth widget. Do NOT post auth URLs to chat. Do NOT retry. Stop and let the widget drive the next turn.
 
