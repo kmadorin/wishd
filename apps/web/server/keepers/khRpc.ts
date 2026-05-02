@@ -1,10 +1,9 @@
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { khTokenStore } from "./khTokenStore";
 import { refreshToken as khRefreshToken } from "./khOAuth";
 
 const KH_BASE = process.env.KH_BASE_URL ?? "http://localhost:5347";
-
-type JsonRpcRequest = { jsonrpc: "2.0"; id: string; method: string; params: unknown };
-type JsonRpcResponse = { jsonrpc: "2.0"; id: string; result?: unknown; error?: { code: number; message: string } };
 
 export class KhUnauthorizedError extends Error {
   constructor(message = "KeeperHub MCP returned 401 — agent must re-authorize via SDK") {
@@ -12,52 +11,74 @@ export class KhUnauthorizedError extends Error {
   }
 }
 
-async function rpc(method: string, params: unknown, retried = false): Promise<unknown> {
+async function withClient<T>(fn: (client: Client) => Promise<T>, retried = false): Promise<T> {
   const tok = khTokenStore.get();
   if (!tok) {
-    // Try to recover with refresh before giving up
-    if (!retried) {
-      const refreshed = await khRefreshToken();
-      if (refreshed) return rpc(method, params, true);
-    }
-    throw new KhUnauthorizedError("no KH access token cached — run a recommend_keeper agent turn first");
+    if (!retried && (await khRefreshToken())) return withClient(fn, true);
+    throw new KhUnauthorizedError("no KH access token cached");
   }
 
-  const body: JsonRpcRequest = { jsonrpc: "2.0", id: crypto.randomUUID(), method: `tools/call`, params: { name: method, arguments: params } };
-  const res = await fetch(`${KH_BASE}/mcp`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${tok.accessToken}`,
+  const transport = new StreamableHTTPClientTransport(new URL(`${KH_BASE}/mcp`), {
+    requestInit: {
+      headers: { authorization: `Bearer ${tok.accessToken}` },
     },
-    body: JSON.stringify(body),
   });
-  if (res.status === 401) {
-    khTokenStore.clear();
-    if (!retried) {
-      const refreshed = await khRefreshToken();
-      if (refreshed) return rpc(method, params, true);
+  const client = new Client({ name: "wishd", version: "0.0.0" }, { capabilities: {} });
+
+  try {
+    await client.connect(transport);
+    return await fn(client);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("401") || /unauthor/i.test(msg)) {
+      khTokenStore.clear();
+      try { await transport.close(); } catch { /* ignore */ }
+      if (!retried && (await khRefreshToken())) return withClient(fn, true);
+      throw new KhUnauthorizedError();
     }
-    throw new KhUnauthorizedError();
+    throw err;
+  } finally {
+    try { await transport.close(); } catch { /* ignore */ }
   }
-  if (!res.ok) {
-    throw new Error(`KH MCP HTTP ${res.status}: ${await res.text()}`);
+}
+
+type CallToolResult = { content: Array<{ type: string; text?: string }>; structuredContent?: unknown };
+
+function parseToolResult(result: CallToolResult): unknown {
+  if (result.structuredContent !== undefined) return result.structuredContent;
+  const text = result.content.find((c) => c.type === "text")?.text;
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
   }
-  const json = (await res.json()) as JsonRpcResponse;
-  if (json.error) throw new Error(`KH MCP error: ${json.error.message}`);
-  return json.result;
 }
 
 export async function khCreateWorkflow(input: { name: string; description?: string; nodes: unknown[]; edges: unknown[] }): Promise<{ workflowId: string }> {
-  const result = (await rpc("create_workflow", input)) as { id: string };
-  return { workflowId: result.id };
+  return withClient(async (client) => {
+    const result = (await client.callTool({ name: "create_workflow", arguments: input as Record<string, unknown> })) as CallToolResult;
+    const data = parseToolResult(result) as { id: string } | null;
+    if (!data?.id) throw new Error("create_workflow: missing id in response");
+    return { workflowId: data.id };
+  });
 }
 
 export async function khUpdateWorkflow(input: { workflowId: string; nodes?: unknown[]; edges?: unknown[]; name?: string; description?: string }): Promise<void> {
-  await rpc("update_workflow", input);
+  await withClient(async (client) => {
+    await client.callTool({ name: "update_workflow", arguments: input as Record<string, unknown> });
+    return null;
+  });
 }
 
 export async function khListWorkflows(): Promise<Array<{ id: string; name: string; enabled: boolean; nodes: unknown[]; edges: unknown[] }>> {
-  const result = (await rpc("list_workflows", {})) as Array<{ id: string; name: string; enabled: boolean; nodes: unknown[]; edges: unknown[] }>;
-  return result;
+  return withClient(async (client) => {
+    const result = (await client.callTool({ name: "list_workflows", arguments: {} })) as CallToolResult;
+    const data = parseToolResult(result);
+    if (Array.isArray(data)) return data as Array<{ id: string; name: string; enabled: boolean; nodes: unknown[]; edges: unknown[] }>;
+    if (data && typeof data === "object" && "workflows" in data) {
+      return (data as { workflows: Array<{ id: string; name: string; enabled: boolean; nodes: unknown[]; edges: unknown[] }> }).workflows;
+    }
+    return [];
+  });
 }
