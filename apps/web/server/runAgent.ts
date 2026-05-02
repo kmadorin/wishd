@@ -6,6 +6,8 @@ import { loadPlugins } from "./pluginLoader";
 import { createWidgetRendererMcp } from "./mcps/widgetRenderer";
 import { buildSystemPrompt } from "./systemPrompt";
 import { listIntents } from "./intentRegistry";
+import { khTokenStore } from "./keepers/khTokenStore";
+import { buildKeeperMcpServer } from "./keepers/agentTools";
 
 export type RunMode = "default" | "narrate-only";
 
@@ -30,8 +32,37 @@ export async function runAgent(input: RunAgentInput): Promise<void> {
   const pluginMcps = plugins.map((p) => p.mcp(pluginCtx));
   const widgetMcp = createWidgetRendererMcp(emit);
 
+  const KH_BASE = process.env.KH_BASE_URL ?? "https://app.keeperhub.dev";
+
+  // Seed khTokenStore from env var on each agent turn so the deploy route can call KH directly.
+  // TODO(oauth): The Agent SDK v0.2.x McpHttpServerConfig only exposes { type, url, headers, tools, alwaysLoad }
+  // — there is no onTokenChange / getMcpTokens callback. Full OAuth token capture requires either:
+  //   (a) a future SDK version that exposes an OAuth hook, or
+  //   (b) a local MCP proxy that handles the OAuth dance and writes to khTokenStore.
+  // For the demo we fall back to reading KH_ACCESS_TOKEN from env and seeding the store manually.
+  const khEnvToken = process.env.KH_ACCESS_TOKEN;
+  if (khEnvToken) {
+    khTokenStore.set({
+      accessToken: khEnvToken,
+      expiresAt: Date.now() + 3_600_000, // 1 h
+      scope: "mcp:write",
+    });
+  }
+
   const mcpServers: Record<string, any> = { widget: widgetMcp };
   for (const m of pluginMcps) mcpServers[m.serverName] = m.server;
+
+  // Inline MCP server exposing keeper tools (recommend_keeper, propose_delegation, inject_keeper_offer).
+  // Tools are reachable as mcp__wishd_keepers__<name>.
+  mcpServers.wishd_keepers = buildKeeperMcpServer({ emit });
+
+  // Remote MCP — KeeperHub. SDK handles OAuth discovery when the user authenticates via Claude Code.
+  // The Bearer header here covers the env-token demo path; in full OAuth the SDK will prompt the user.
+  mcpServers.keeperhub = {
+    type: "http" as const,
+    url: `${KH_BASE}/mcp`,
+    ...(khEnvToken ? { headers: { authorization: `Bearer ${khEnvToken}` } } : {}),
+  };
 
   const systemPrompt = await buildSystemPrompt({ mode, intents });
   const userMessage = JSON.stringify({ wish, account, context: context ?? {}, mode });
@@ -48,7 +79,7 @@ export async function runAgent(input: RunAgentInput): Promise<void> {
         allowedTools,
         permissionMode: "bypassPermissions",
         allowDangerouslySkipPermissions: true,
-        maxTurns: mode === "narrate-only" ? 1 : 3,
+        maxTurns: mode === "narrate-only" ? 1 : 4, // bumped from 3 to allow recommend → propose → inject
       },
     });
 

@@ -50,7 +50,7 @@ export function StepStack() {
         const label = STEP_LABELS[w.type] ?? { step: "STEP", title: w.type };
         return (
           <StepCard key={w.id} step={label.step} title={label.title} sub={label.sub}>
-            <W {...w.props} />
+            <W {...w.props} id={w.id} />
           </StepCard>
         );
       })}

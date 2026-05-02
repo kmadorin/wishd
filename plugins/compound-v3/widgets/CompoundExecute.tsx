@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   useAccount,
   useConnect,
@@ -36,6 +36,20 @@ export type CompoundExecuteProps = {
   needsApprove?: boolean;
   /** "deposit" (default) or "withdraw" — drives button label and confirmed message. */
   actionKind?: "deposit" | "withdraw";
+  /** Widget id assigned by widgetRenderer (uuid). Used as stepCardId in wishd:wish event. */
+  id?: string;
+  /** Agent-injected keeper offers; SuccessCard renders them when present. */
+  keeperOffers?: Array<{
+    id?: string;
+    keeperId?: string;
+    badge?: string;
+    title: string;
+    desc: string;
+    featured?: boolean;
+    comingSoon?: boolean;
+    state?: { kind: "not_deployed" } | { kind: "deployed_enabled"; workflowId: string; permissionsId: `0x${string}` } | { kind: "deployed_disabled"; workflowId: string; permissionsId: `0x${string}` };
+    suggestedDelegation?: unknown;
+  }>;
 };
 
 export function CompoundExecute(props: CompoundExecuteProps) {
@@ -56,6 +70,7 @@ export function CompoundExecute(props: CompoundExecuteProps) {
 
   const [phase, setPhase] = useState<Phase>("ready");
   const [errMsg, setErrMsg] = useState<string | null>(null);
+  const wishFiredRef = useRef(false);
 
   useEffect(() => {
     if (!isConnected) {
@@ -96,6 +111,31 @@ export function CompoundExecute(props: CompoundExecuteProps) {
     callsStatus.isLoading,
     props.chainId,
   ]);
+
+  // Dispatch follow-up wish exactly once when the transaction is confirmed.
+  useEffect(() => {
+    if (callsStatus.data?.status !== "success") return;
+    if (wishFiredRef.current) return;
+    wishFiredRef.current = true;
+    const confirmedKind = props.actionKind ?? "deposit";
+    const account = { address: props.user, chainId: props.chainId };
+    const latestTxHash = callsStatus.data?.receipts?.[callsStatus.data.receipts.length - 1]?.transactionHash;
+    window.dispatchEvent(
+      new CustomEvent("wishd:wish", {
+        detail: {
+          wish: `intent confirmed: ${confirmedKind} ${props.amount} ${props.asset}`,
+          account,
+          context: {
+            intent: confirmedKind === "deposit" ? "compound-v3.deposit" : "compound-v3.withdraw",
+            confirmed: true,
+            userPortoAddress: account.address,
+            stepCardId: props.id ?? "",
+            txHash: latestTxHash,
+          },
+        },
+      }),
+    );
+  }, [callsStatus.data?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function onClick() {
     setErrMsg(null);
@@ -151,12 +191,7 @@ export function CompoundExecute(props: CompoundExecuteProps) {
               {txHash.slice(0,10)}…{txHash.slice(-8)}
             </a> },
         ]}
-        keeperOffers={isWithdraw ? [] : [
-          { id: "auto-compound", badge: "KEEPERHUB", featured: true,
-            title: "Auto-compound yield",
-            desc: "claim and re-supply rewards weekly. uses session permissions.",
-            comingSoon: true },
-        ]}
+        keeperOffers={isWithdraw ? [] : (props.keeperOffers ?? [])}
         primaryAction={{
           label: "make another wish",
           onClick: () => reset(),

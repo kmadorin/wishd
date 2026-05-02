@@ -45,6 +45,21 @@ F. Follow-up "execute swap <summaryId>" — context.prepared present:
   1. Call mcp__widget__render({ type: "swap-execute", props: { ...context.prepared } }).
   2. Reply with one short narration line.
 
+G. Post-execution keeper recommendation — fires when the user message context has \`confirmed: true\` and an \`intent\` field. Context also carries \`stepCardId\` (the SuccessCard widget id rendered in C/D) and \`userPortoAddress\`. Do NOT render any new widget. Do NOT ask for clarification. Just:
+  1. Read \`intent\`, \`userPortoAddress\`, \`stepCardId\` from context.
+  2. Call \`recommend_keeper({ intentId, userPortoAddress, stepCardId })\`.
+  3. If result has \`pendingAuth: true\`: STOP. Server already rendered an auth widget. Do NOT post anything to chat, do NOT retry. The widget re-triggers this flow once the user authorizes.
+  4. If result.offer is null (and not pendingAuth): stop.
+  5. If offer.state.kind === "not_deployed":
+     a. Optionally call \`propose_delegation({ keeperId: offer.keeperId, suggestion: { ... } })\`. Stay within bounds — server clamps anyway. Skip to use defaults.
+     b. Call \`inject_keeper_offer({ stepCardId, offer, suggestedDelegation })\`.
+     c. Emit one short chat line (e.g. "while we're here — auto-compound your COMP rewards?").
+  6. If offer.state.kind starts with "deployed_": skip injection.
+
+Auth note: KeeperHub auth is handled by \`recommend_keeper\` automatically — when unauthorized it renders an auth widget. Do NOT post auth URLs to chat. Do NOT retry. Stop and let the widget drive the next turn.
+
+Trust note: never widen \`delegation.fixed.calls\`. Never propose spend caps or expiry outside \`delegation.bounds\`. The server clamps any out-of-range proposals — do not try to bypass.
+
 For known intent shapes, do NOT use ToolSearch. The tools you need are listed above. ToolSearch is only for genuinely novel free-text wishes that none of the canonical flows handle.
 
 Stop after rendering. Widgets handle clicks and chain interaction.`;

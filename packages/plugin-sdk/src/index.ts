@@ -39,37 +39,89 @@ export type Manifest = {
   };
 };
 
-export type KhWorkflowJson = {
-  name: string;
-  schedule?: { cron: string };
-  nodes: Array<{
-    id: string;
-    label: string;
-    actionType: string;
-    config: Record<string, unknown>;
-  }>;
-  edges: Array<{
-    source: string;
-    target: string;
-    sourceHandle?: "true" | "false" | "loop" | "done";
-  }>;
-  enabled?: boolean;
+// ---------- keeper-related types ----------
+
+export type ExpiryPolicy =
+  | { kind: "unlimited" }
+  | { kind: "bounded"; maxDays: number }
+  | { kind: "fixed"; days: number };
+
+export type SpendPeriod = "day" | "week" | "month";
+
+export type PortoPermissionsBounds = {
+  fixed: {
+    calls: Address[];
+    feeToken: Address;
+  };
+  expiryPolicy: ExpiryPolicy;
+  spend: {
+    bounds: Array<{ token: Address; maxLimit: bigint; periods: SpendPeriod[] }>;
+    defaults: Array<{ token: Address; limit: bigint; period: SpendPeriod }>;
+  };
 };
 
-export type DelegationSpec =
-  | { kind: "comet-allow"; comet: Address; manager: Address }
-  | {
-      kind: "porto-permissions";
-      payload: {
-        expiry: number;
-        feeToken?: { limit: string; symbol: string };
-        key: { type: "secp256k1"; publicKey: Address };
-        permissions: {
-          calls: Array<{ to: Address; signature: string }>;
-          spend?: Array<{ token: Address; limit: bigint; period: "hour" | "day" | "week" | "month" }>;
-        };
-      };
-    };
+export type CometAllowSpec = {
+  kind: "comet-allow";
+  comet: Address;
+  manager: Address;
+};
+
+export type PortoPermissionsSpec = PortoPermissionsBounds & { kind: "porto-permissions" };
+
+export type DelegationSpec = PortoPermissionsSpec | CometAllowSpec;
+
+/** Runtime payload sent into Porto's wallet_grantPermissions. */
+export type PortoPermissionsGrant = {
+  expiry: number;
+  feeToken?: { limit: string; symbol: string };
+  key: { type: "secp256k1"; publicKey: Address };
+  permissions: {
+    calls: Array<{ to: Address; signature: string }>;
+    spend?: Array<{ token: Address; limit: bigint; period: "hour" | SpendPeriod }>;
+  };
+};
+
+export type KhWorkflowNode = {
+  id: string;
+  type: string;
+  position: { x: number; y: number };
+  data: {
+    type: string;
+    label: string;
+    config: Record<string, unknown>;
+    status?: string;
+  };
+};
+
+export type KhWorkflowEdge = {
+  id?: string;
+  source: string;
+  target: string;
+  sourceHandle?: string;
+};
+
+export type KhWorkflowJson = {
+  name: string;
+  description?: string;
+  nodes: KhWorkflowNode[];
+  edges: KhWorkflowEdge[];
+};
+
+export type WorkflowParams = {
+  userPortoAddress: Address;
+  permissionsId: `0x${string}`;
+};
+
+export type KeeperManifest = {
+  id: string;
+  name: string;
+  description: string;
+  version: string;
+  chains: number[];
+  plugins: string[];
+  trust: TrustTier;
+  appliesTo: Array<{ intent: string }>;
+};
 
 export type ServerEvent =
   | { type: "chat.delta"; delta: string }
@@ -98,21 +150,31 @@ export function definePlugin(p: Plugin): Plugin {
   return p;
 }
 
-export type Keeper<TParams = Record<string, unknown>> = {
-  manifest: {
-    name: string;
-    version: string;
-    plugins: string[];
-    chains: number[];
-    trust: TrustTier;
-    description: string;
-  };
-  paramsSchema: unknown;
-  buildWorkflow(params: TParams & { userAddress: Address; chainId: number }): KhWorkflowJson;
-  delegation(params: TParams & { userAddress: Address; chainId: number }): DelegationSpec;
-  widgets?: Record<string, ComponentType<any>>;
+export type Keeper = {
+  manifest: KeeperManifest;
+  delegation: DelegationSpec;
+  buildWorkflow: (params: WorkflowParams) => KhWorkflowJson;
+  setupWidget?: string;
 };
 
-export function defineKeeper<TParams>(k: Keeper<TParams>): Keeper<TParams> {
+export function defineKeeper(k: Keeper): Keeper {
   return k;
 }
+
+export type KeeperState =
+  | { kind: "not_deployed" }
+  | { kind: "deployed_enabled"; workflowId: string; permissionsId: `0x${string}` }
+  | { kind: "deployed_disabled"; workflowId: string; permissionsId: `0x${string}` };
+
+export type KeeperOffer = {
+  keeperId: string;
+  title: string;
+  desc: string;
+  badge?: string;
+  featured?: boolean;
+  state: KeeperState;
+  rationale?: string;
+};
+
+// re-export Address for downstream packages that don't depend on viem directly
+export type { Address };
