@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ReactElement } from "react";
-import { useAccount, useConnectorClient } from "wagmi";
+import { useAccount } from "wagmi";
+import { useGrantPermissions } from "porto/wagmi/Hooks";
 import { useKeeperDeploy } from "@/store/keeperDeploy";
 import { clientGetKeeper } from "@/lib/keepers/clientRegistry";
 import { buildPortoGrantPayload } from "@/lib/keepers/buildPortoGrantPayload";
@@ -14,10 +15,10 @@ type Phase = "review" | "granting" | "deploying" | "confirmed" | "error";
 export function KeeperDeployFlow(): ReactElement | null {
   const { open, payload, close } = useKeeperDeploy();
   const { address } = useAccount();
-  const { data: walletClient } = useConnectorClient();
   const [phase, setPhase] = useState<Phase>("review");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [proposal, setProposal] = useState<DelegationProposal | null>(null);
+  const grant = useGrantPermissions();
 
   const keeper = useMemo(() => (payload ? clientGetKeeper(payload.offer.keeperId) : null), [payload]);
 
@@ -42,7 +43,7 @@ export function KeeperDeployFlow(): ReactElement | null {
   if (keeper.delegation.kind !== "porto-permissions") return null;
 
   async function handleContinue(): Promise<void> {
-    if (!walletClient || !address) {
+    if (!address) {
       setErrorMsg("connect a Porto wallet first");
       setPhase("error");
       return;
@@ -50,16 +51,17 @@ export function KeeperDeployFlow(): ReactElement | null {
     setPhase("granting");
     try {
       const sessionKey = ("0x" + crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "")).slice(0, 42) as Address;
-      // TODO during impl: derive sessionKey from Porto SDK helper instead of placeholder; reference crypto-bro-calls/frontend.
-      const grant = buildPortoGrantPayload({
+      // TODO(P1+): replace placeholder with Porto-issued session key.
+      const params = buildPortoGrantPayload({
         keeper: keeper!,
         proposal: proposal!,
         sessionPublicKey: sessionKey,
       });
-      const result = (await (walletClient as any).request({
-        method: "wallet_grantPermissions",
-        params: [grant],
-      })) as { permissionsId: `0x${string}` };
+      const result = await grant.mutateAsync({
+        chainId: 11155111 as 11155111,
+        ...params,
+      } as Parameters<typeof grant.mutateAsync>[0]);
+      const permissionsId = result.id as `0x${string}`;
 
       setPhase("deploying");
       const res = await fetch("/api/keepers/deploy", {
@@ -68,7 +70,7 @@ export function KeeperDeployFlow(): ReactElement | null {
         body: JSON.stringify({
           keeperId: keeper!.manifest.id,
           userPortoAddress: address,
-          permissionsId: result.permissionsId,
+          permissionsId,
         }),
       });
       if (!res.ok) {
