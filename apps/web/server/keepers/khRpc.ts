@@ -1,6 +1,7 @@
 import { khTokenStore } from "./khTokenStore";
+import { refreshToken as khRefreshToken } from "./khOAuth";
 
-const KH_BASE = process.env.KH_BASE_URL ?? "https://app.keeperhub.dev";
+const KH_BASE = process.env.KH_BASE_URL ?? "http://localhost:5347";
 
 type JsonRpcRequest = { jsonrpc: "2.0"; id: string; method: string; params: unknown };
 type JsonRpcResponse = { jsonrpc: "2.0"; id: string; result?: unknown; error?: { code: number; message: string } };
@@ -11,9 +12,16 @@ export class KhUnauthorizedError extends Error {
   }
 }
 
-async function rpc(method: string, params: unknown): Promise<unknown> {
+async function rpc(method: string, params: unknown, retried = false): Promise<unknown> {
   const tok = khTokenStore.get();
-  if (!tok) throw new KhUnauthorizedError("no KH access token cached — run a recommend_keeper agent turn first");
+  if (!tok) {
+    // Try to recover with refresh before giving up
+    if (!retried) {
+      const refreshed = await khRefreshToken();
+      if (refreshed) return rpc(method, params, true);
+    }
+    throw new KhUnauthorizedError("no KH access token cached — run a recommend_keeper agent turn first");
+  }
 
   const body: JsonRpcRequest = { jsonrpc: "2.0", id: crypto.randomUUID(), method: `tools/call`, params: { name: method, arguments: params } };
   const res = await fetch(`${KH_BASE}/mcp`, {
@@ -26,6 +34,10 @@ async function rpc(method: string, params: unknown): Promise<unknown> {
   });
   if (res.status === 401) {
     khTokenStore.clear();
+    if (!retried) {
+      const refreshed = await khRefreshToken();
+      if (refreshed) return rpc(method, params, true);
+    }
     throw new KhUnauthorizedError();
   }
   if (!res.ok) {
