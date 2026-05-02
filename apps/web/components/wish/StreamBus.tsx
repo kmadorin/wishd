@@ -19,12 +19,12 @@ export function StreamBus() {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<WishDetail>).detail;
       if (!detail?.wish) return;
-      if (useWorkspace.getState().executing) return;
-      if (detail.reset) reset();
-      setExecuting(true);
-
       const intentId = typeof detail.context?.intent === "string" ? detail.context.intent : null;
       const isPostExec = detail.context?.confirmed === true && intentId !== null && clientHasKeeperForIntent(intentId);
+      // Post-exec wishes must run even if a prior stream is still open; they're additive.
+      if (!isPostExec && useWorkspace.getState().executing) return;
+      if (detail.reset) reset();
+      setExecuting(true);
       const skeletonId = isPostExec ? `kh-skeleton-${Date.now()}` : null;
       let hydrated = false;
       if (skeletonId) {
