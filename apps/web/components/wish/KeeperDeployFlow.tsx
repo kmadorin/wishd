@@ -137,26 +137,16 @@ export function KeeperDeployFlow(): ReactElement | null {
                   keeper.manifest.explainer.perToken[s.token]?.decimals
                   ?? lookup(s.token)?.decimals
                   ?? 18;
-                const display = formatUnits(s.limit, decimals);
                 const maxDisplay = bound ? formatUnits(bound.maxLimit, decimals) : "—";
                 return (
                   <div key={s.token} className="grid grid-cols-[1fr_auto_auto] gap-2 items-center text-xs">
                     <span>{tokenLabel}</span>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      aria-label={`spend cap ${tokenLabel}`}
-                      className="bg-surface-2 border border-rule rounded px-2 py-1 w-28 font-mono text-right"
-                      value={display}
-                      onChange={(e) => {
-                        const cleaned = e.target.value.replace(/[^0-9.]/g, "");
-                        if (!cleaned) return;
-                        let parsed: bigint;
-                        try { parsed = parseUnits(cleaned as `${number}`, decimals); }
-                        catch { return; }
-                        const max = bound?.maxLimit ?? parsed;
-                        setSpendLimit(s.token, parsed > max ? max : parsed);
-                      }}
+                    <SpendCapInput
+                      tokenLabel={tokenLabel}
+                      decimals={decimals}
+                      limit={s.limit}
+                      maxLimit={bound?.maxLimit}
+                      onCommit={(parsed) => setSpendLimit(s.token, parsed)}
                     />
                     <select
                       className="bg-surface-2 border border-rule rounded px-2 py-1 text-xs"
@@ -232,6 +222,14 @@ function Block(props: { label: string; children: React.ReactNode }): ReactElemen
 
 function CallsAccordion(props: { keeper: Keeper }): ReactElement | null {
   const [open, setOpen] = useState(false);
+  const perCall = useMemo(() => {
+    const out: Record<string, { label: string; purpose: string }> = {};
+    if (props.keeper.delegation.kind !== "porto-permissions") return out;
+    for (const [k, v] of Object.entries(props.keeper.manifest.explainer.perCall)) {
+      out[k.toLowerCase()] = v;
+    }
+    return out;
+  }, [props.keeper]);
   if (props.keeper.delegation.kind !== "porto-permissions") return null;
   const calls = props.keeper.delegation.fixed.calls;
   return (
@@ -248,7 +246,7 @@ function CallsAccordion(props: { keeper: Keeper }): ReactElement | null {
       {open && (
         <ul className="mt-2 space-y-1.5 text-xs">
           {calls.map((c) => {
-            const e = props.keeper.manifest.explainer.perCall[c.to] ?? {
+            const e = perCall[c.to.toLowerCase()] ?? {
               label: lookup(c.to)?.label ?? addressShort(c.to),
               purpose: c.signature,
             };
@@ -265,5 +263,81 @@ function CallsAccordion(props: { keeper: Keeper }): ReactElement | null {
         </ul>
       )}
     </div>
+  );
+}
+
+function SpendCapInput(props: {
+  tokenLabel: string;
+  decimals: number;
+  limit: bigint;
+  maxLimit?: bigint;
+  onCommit: (parsed: bigint) => void;
+}): ReactElement {
+  const { tokenLabel, decimals, limit, maxLimit, onCommit } = props;
+  const [text, setText] = useState<string>(() => formatUnits(limit, decimals));
+  const [focused, setFocused] = useState(false);
+
+  // Re-sync local text from canonical bigint when external limit changes
+  // and user is not actively editing.
+  useEffect(() => {
+    if (!focused) setText(formatUnits(limit, decimals));
+  }, [limit, decimals, focused]);
+
+  function clean(raw: string): string {
+    // Allow only digits and a single dot.
+    let s = raw.replace(/[^0-9.]/g, "");
+    const firstDot = s.indexOf(".");
+    if (firstDot !== -1) {
+      s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, "");
+      // Truncate fractional portion to `decimals` digits.
+      const [intPart, fracPart = ""] = s.split(".");
+      s = intPart + "." + fracPart.slice(0, decimals);
+      if (s.endsWith(".") && fracPart.length === 0 && decimals === 0) {
+        s = intPart;
+      }
+    }
+    return s;
+  }
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      aria-label={`spend cap ${tokenLabel}`}
+      className="bg-surface-2 border border-rule rounded px-2 py-1 w-28 font-mono text-right"
+      value={text}
+      onFocus={() => setFocused(true)}
+      onBlur={() => {
+        setFocused(false);
+        // On blur, snap text to the canonical formatted limit so the user
+        // sees the committed value (handles trailing dots, empty input, etc.)
+        setText(formatUnits(limit, decimals));
+      }}
+      onChange={(e) => {
+        const cleaned = clean(e.target.value);
+        // Empty or bare "." → keep the text but don't commit.
+        if (cleaned === "" || cleaned === ".") {
+          setText(cleaned);
+          return;
+        }
+        let parsed: bigint;
+        try {
+          parsed = parseUnits(cleaned as `${number}`, decimals);
+        } catch {
+          // Couldn't parse — keep the text so the user can keep editing.
+          setText(cleaned);
+          return;
+        }
+        if (maxLimit !== undefined && parsed > maxLimit) {
+          // Synchronously clamp: mirror the displayed text to the clamped value
+          // and commit the clamped bigint.
+          setText(formatUnits(maxLimit, decimals));
+          onCommit(maxLimit);
+        } else {
+          setText(cleaned);
+          onCommit(parsed);
+        }
+      }}
+    />
   );
 }

@@ -16,6 +16,6 @@ describe("addressBook", () => {
   });
 
   it("addressShort renders 0xfirst…last4", () => {
-    expect(addressShort(USDC_SEPOLIA)).toMatch(/^0x[A-Fa-f0-9]{4,6}…[A-Fa-f0-9]{4}$/);
+    expect(addressShort(USDC_SEPOLIA)).toMatch(/^0x[A-Fa-f0-9]{4}…[A-Fa-f0-9]{4}$/);
   });
 });

@@ -96,6 +96,27 @@ describe("KeeperDeployFlow", () => {
     expect(screen.getByText(/Invalid parameters were provided to the RPC method/i)).toBeInTheDocument();
   });
 
+  it("allows typing a partial decimal like '1.' without erasing the dot", async () => {
+    const user = userEvent.setup();
+    renderReviewPhase();
+    const inputs = screen.getAllByRole("textbox");
+    const compInput = inputs.find((i) => (i as HTMLInputElement).getAttribute("aria-label") === "spend cap COMP")!;
+    await user.clear(compInput);
+    await user.type(compInput, "1.5");
+    expect((compInput as HTMLInputElement).value).toBe("1.5");
+  });
+
+  it("truncates over-precision input to token decimals", async () => {
+    const user = userEvent.setup();
+    renderReviewPhase();
+    const inputs = screen.getAllByRole("textbox");
+    const usdcInput = inputs.find((i) => (i as HTMLInputElement).getAttribute("aria-label") === "spend cap USDC")!;
+    await user.clear(usdcInput);
+    await user.type(usdcInput, "1.1234567");
+    // truncated to 6 decimals
+    expect((usdcInput as HTMLInputElement).value).toBe("1.123456");
+  });
+
   it("collapses 'allowed contract calls' by default and toggles open", async () => {
     const user = userEvent.setup();
     renderReviewPhase();
