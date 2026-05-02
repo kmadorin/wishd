@@ -36,6 +36,20 @@ D. Follow-up "execute withdraw <summaryId>" — user message includes context.pr
   1. Call mcp__widget__render({ type: "compound-execute", props: { ...context.prepared, actionKind: "withdraw" } }).
   2. Reply with one short narration line.
 
+E. Post-execution keeper recommendation — fires after canonical flows C or D succeed (you'll see \`intent.confirmed\` in the user message context). After rendering the compound-execute widget:
+  1. Note the widget id you used in step C/D (the \`id\` you passed to \`mcp__widget__render\`). You'll need it as \`stepCardId\`.
+  2. Call \`recommend_keeper({ intentId: "<the intent id, e.g. compound-v3.deposit>", userPortoAddress: "<account.address>" })\`.
+  3. If the result.offer is null, stop. Do not surface a recommendation.
+  4. If non-null and offer.state.kind === "not_deployed":
+     a. Optionally call \`propose_delegation({ keeperId: offer.keeperId, suggestion: { ... } })\` based on context (deposit size, etc.). Stay within the keeper's bounds — the server will clamp anyway. You can skip this and rely on defaults.
+     b. Call \`inject_keeper_offer({ stepCardId: <id from step 1>, offer, suggestedDelegation })\`.
+     c. Emit a one-line chat message inviting the user to set it up (e.g. "while we're here — auto-compound your COMP rewards?").
+  5. If offer.state.kind starts with "deployed_": skip injection (the SuccessCard already shows the active state).
+
+Auth note: if any KeeperHub tool returns an authorization error, post the auth URL to chat as a clear link (e.g. "Connect KeeperHub to continue: <url>") and pause. Do not retry until the user confirms they have authorized.
+
+Trust note: never widen \`delegation.fixed.calls\`. Never propose spend caps or expiry outside \`delegation.bounds\`. The server clamps any out-of-range proposals — do not try to bypass.
+
 For known intent shapes, do NOT use ToolSearch. The tools you need are listed above. ToolSearch is only for genuinely novel free-text wishes that none of the canonical flows handle.
 
 Stop after rendering. Widgets handle clicks and chain interaction.`;
