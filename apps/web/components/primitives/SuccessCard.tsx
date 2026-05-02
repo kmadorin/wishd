@@ -1,15 +1,20 @@
 "use client";
 import type { ReactNode } from "react";
+import { useKeeperDeploy } from "../../store/keeperDeploy";
+import type { KeeperOffer as SdkKeeperOffer } from "@wishd/plugin-sdk";
 
 export type SuccessSummaryRow = { k: string; v: ReactNode };
 
 export type KeeperOffer = {
-  id: string;
+  id?: string;
+  keeperId?: string;
   badge?: string;
   title: string;
   desc: string;
   featured?: boolean;
   comingSoon?: boolean;
+  state?: SdkKeeperOffer["state"];
+  suggestedDelegation?: unknown;
 };
 
 export type SuccessCardProps = {
@@ -24,6 +29,7 @@ export type SuccessCardProps = {
 export function SuccessCard({
   title, sub, summary, keeperOffers = [], primaryAction, secondaryAction,
 }: SuccessCardProps) {
+  const openDeploy = useKeeperDeploy((s) => s.openDeploy);
   return (
     <div className="grid grid-cols-1 sm:grid-cols-[1fr_240px] gap-5 items-start">
       <div>
@@ -34,8 +40,12 @@ export function SuccessCard({
           <>
             <div className="font-mono text-[10px] tracking-[0.12em] uppercase text-ink-3 mb-3">workflows you can deploy</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-3">
-              {keeperOffers.map((o) => (
-                <div key={o.id} className={[
+              {keeperOffers.map((o) => {
+                const active = o.state?.kind === "deployed_enabled";
+                const paused = o.state?.kind === "deployed_disabled";
+                const canDeploy = !o.comingSoon && (!o.state || o.state.kind === "not_deployed") && Boolean(o.keeperId);
+                return (
+                <div key={o.keeperId ?? o.id} className={[
                   "bg-surface-2 border-[1.5px] rounded-sm p-3.5",
                   o.featured ? "border-ink" : "border-rule",
                 ].join(" ")}>
@@ -46,22 +56,41 @@ export function SuccessCard({
                   )}
                   <div className="font-bold text-sm mb-1">{o.title}</div>
                   <p className="text-xs text-ink-3 mb-2.5 leading-snug">{o.desc}</p>
-                  <div className="flex gap-1.5 flex-wrap">
-                    <button
-                      type="button"
-                      disabled={o.comingSoon}
-                      title={o.comingSoon ? "coming soon" : undefined}
-                      className="bg-accent border-[1.5px] border-ink rounded-pill px-3 py-1 text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                    >deploy ✦</button>
-                    <button
-                      type="button"
-                      disabled={o.comingSoon}
-                      title={o.comingSoon ? "coming soon" : undefined}
-                      className="bg-transparent border-[1.5px] border-rule rounded-pill px-3 py-1 text-xs text-ink-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >customize</button>
-                  </div>
+                  {active && <p className="text-xs text-ink-2">auto-compound active ✓</p>}
+                  {paused && <p className="text-xs text-ink-3">paused — re-enable in your KeeperHub dashboard</p>}
+                  {!active && !paused && (
+                    <div className="flex gap-1.5 flex-wrap">
+                      <button
+                        type="button"
+                        disabled={!canDeploy}
+                        onClick={() => {
+                          if (!canDeploy || !o.keeperId) return;
+                          openDeploy({
+                            offer: {
+                              keeperId: o.keeperId,
+                              title: o.title,
+                              desc: o.desc,
+                              badge: o.badge,
+                              featured: o.featured,
+                              state: o.state ?? { kind: "not_deployed" },
+                            },
+                            suggestedDelegation: o.suggestedDelegation as never,
+                          });
+                        }}
+                        title={o.comingSoon ? "coming soon" : undefined}
+                        className="bg-accent border-[1.5px] border-ink rounded-pill px-3 py-1 text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                      >deploy ✦</button>
+                      <button
+                        type="button"
+                        disabled={o.comingSoon}
+                        title={o.comingSoon ? "coming soon" : undefined}
+                        className="bg-transparent border-[1.5px] border-rule rounded-pill px-3 py-1 text-xs text-ink-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >customize</button>
+                    </div>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )}

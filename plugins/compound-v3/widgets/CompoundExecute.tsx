@@ -36,6 +36,18 @@ export type CompoundExecuteProps = {
   needsApprove?: boolean;
   /** "deposit" (default) or "withdraw" — drives button label and confirmed message. */
   actionKind?: "deposit" | "withdraw";
+  /** Agent-injected keeper offers; SuccessCard renders them when present. */
+  keeperOffers?: Array<{
+    id?: string;
+    keeperId?: string;
+    badge?: string;
+    title: string;
+    desc: string;
+    featured?: boolean;
+    comingSoon?: boolean;
+    state?: { kind: "not_deployed" } | { kind: "deployed_enabled"; workflowId: string; permissionsId: `0x${string}` } | { kind: "deployed_disabled"; workflowId: string; permissionsId: `0x${string}` };
+    suggestedDelegation?: unknown;
+  }>;
 };
 
 export function CompoundExecute(props: CompoundExecuteProps) {
@@ -151,12 +163,7 @@ export function CompoundExecute(props: CompoundExecuteProps) {
               {txHash.slice(0,10)}…{txHash.slice(-8)}
             </a> },
         ]}
-        keeperOffers={isWithdraw ? [] : [
-          { id: "auto-compound", badge: "KEEPERHUB", featured: true,
-            title: "Auto-compound yield",
-            desc: "claim and re-supply rewards weekly. uses session permissions.",
-            comingSoon: true },
-        ]}
+        keeperOffers={isWithdraw ? [] : (props.keeperOffers ?? [])}
         primaryAction={{
           label: "make another wish",
           onClick: () => reset(),

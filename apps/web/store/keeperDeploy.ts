@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { KeeperOffer } from "@wishd/plugin-sdk";
-import type { DelegationProposal } from "@/server/keepers/proposeDelegation";
+import type { DelegationProposal } from "../server/keepers/proposeDelegation";
 
 type State = {
   open: boolean;
