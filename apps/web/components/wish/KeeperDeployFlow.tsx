@@ -91,7 +91,7 @@ export function KeeperDeployFlow(): ReactElement | null {
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="bg-surface-1 w-full max-w-md rounded-md border border-rule p-5">
+      <div className="bg-surface w-full max-w-md rounded-md border border-rule p-5">
         <header className="flex items-start justify-between mb-3">
           <div>
             <div className="font-mono text-[10px] tracking-[0.12em] uppercase text-ink-3">deploy keeper</div>

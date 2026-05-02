@@ -69,7 +69,7 @@ export function KeeperhubAuthCard({ stepCardId, intent, userPortoAddress }: Prop
   }
 
   return (
-    <div className="bg-surface-1 rounded-md border border-rule p-4 space-y-3 max-w-sm">
+    <div className="bg-surface rounded-md border border-rule p-4 space-y-3 max-w-sm">
       <header>
         <div className="font-mono text-[10px] tracking-[0.12em] uppercase text-ink-3">keeper hub</div>
         <h2 className="font-hand text-xl font-bold leading-tight">Connect KeeperHub</h2>
