@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { useKeeperDeploy } from "@/store/keeperDeploy";
 import { KeeperDeployFlow } from "./KeeperDeployFlow";
 
@@ -19,6 +20,18 @@ vi.mock("porto/wagmi/Hooks", () => ({
 const fetchMock = vi.fn();
 vi.stubGlobal("fetch", fetchMock);
 
+function renderReviewPhase() {
+  useKeeperDeploy.getState().openDeploy({
+    offer: {
+      keeperId: "auto-compound-comp",
+      title: "Auto-compound COMP rewards",
+      desc: "Hourly auto-compound",
+      state: { kind: "not_deployed" },
+    },
+  });
+  return render(<KeeperDeployFlow />);
+}
+
 describe("KeeperDeployFlow", () => {
   beforeEach(() => {
     useKeeperDeploy.getState().close();
@@ -27,15 +40,7 @@ describe("KeeperDeployFlow", () => {
   });
 
   it("renders review phase title when an offer is opened", () => {
-    useKeeperDeploy.getState().openDeploy({
-      offer: {
-        keeperId: "auto-compound-comp",
-        title: "Auto-compound COMP rewards",
-        desc: "Hourly auto-compound",
-        state: { kind: "not_deployed" },
-      },
-    });
-    render(<KeeperDeployFlow />);
+    renderReviewPhase();
     expect(screen.getByText(/Auto-compound COMP rewards/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /continue/i })).toBeInTheDocument();
   });
@@ -50,19 +55,42 @@ describe("KeeperDeployFlow", () => {
     mutateAsync.mockResolvedValue({ id: "0xabc", key: { publicKey: "0xdEaD" } });
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) });
 
-    useKeeperDeploy.getState().openDeploy({
-      offer: {
-        keeperId: "auto-compound-comp",
-        title: "Auto-compound COMP rewards",
-        desc: "Hourly auto-compound",
-        state: { kind: "not_deployed" },
-      },
-    });
-    render(<KeeperDeployFlow />);
+    renderReviewPhase();
     fireEvent.click(screen.getByRole("button", { name: /continue/i }));
     await waitFor(() => expect(mutateAsync).toHaveBeenCalled());
     const arg = mutateAsync.mock.calls[0]![0];
     expect(arg.feeToken).toMatchObject({ symbol: "ETH", limit: "0.05" });
     expect(typeof arg.permissions.spend[0].limit).toBe("bigint");
+  });
+
+  it("renders narrative card from manifest.explainer.whatThisDoes", () => {
+    renderReviewPhase();
+    expect(screen.getByText(/claims your COMP rewards/i)).toBeInTheDocument();
+  });
+
+  it("displays spend caps in decimal units (100, not 100000000000000000000)", () => {
+    renderReviewPhase();
+    const inputs = screen.getAllByRole("textbox");
+    const compInput = inputs.find((i) => (i as HTMLInputElement).getAttribute("aria-label") === "spend cap COMP");
+    expect((compInput as HTMLInputElement).value).toBe("100");
+  });
+
+  it("clamps spend cap to bound.maxLimit on input", async () => {
+    const user = userEvent.setup();
+    renderReviewPhase();
+    const inputs = screen.getAllByRole("textbox");
+    const compInput = inputs.find((i) => (i as HTMLInputElement).getAttribute("aria-label") === "spend cap COMP")!;
+    await user.clear(compInput);
+    await user.type(compInput, "99999");
+    // bound is 1000 COMP/month
+    expect((compInput as HTMLInputElement).value).toBe("1000");
+  });
+
+  it("collapses 'allowed contract calls' by default and toggles open", async () => {
+    const user = userEvent.setup();
+    renderReviewPhase();
+    expect(screen.queryByText(/Compound · CometRewards/i)).toBeNull();
+    await user.click(screen.getByRole("button", { name: /allowed contract calls/i }));
+    expect(screen.getByText(/Compound · CometRewards/i)).toBeInTheDocument();
   });
 });
