@@ -115,6 +115,7 @@ export function WishComposer() {
           account,
           context: { mode: "narrate-only", intent: s.intent, values: vs },
           onEvent: (e) => {
+            if (e.type === "tool.call") ws.appendAgentEvent({ kind: "tool.call", name: e.name, input: e.input });
             if (e.type === "chat.delta") ws.appendNarration(e.delta);
             if (e.type === "ui.patch") ws.patchWidget(e.id, e.props);
             if (e.type === "ui.dismiss") ws.dismissWidget(e.id);
@@ -205,6 +206,7 @@ export function WishComposer() {
         wish,
         account,
         onEvent: (e) => {
+          if (e.type === "tool.call") ws.appendAgentEvent({ kind: "tool.call", name: e.name, input: e.input });
           if (e.type === "chat.delta") ws.appendNarration(e.delta);
           if (e.type === "ui.render") {
             ws.hydrateSkeleton(skeletonId, {

@@ -12,7 +12,7 @@ type WishDetail = {
 };
 
 export function StreamBus() {
-  const { appendWidget, patchWidget, dismissWidget, appendNarration, reset, setExecuting } = useWorkspace();
+  const { appendWidget, patchWidget, dismissWidget, appendNarration, appendAgentEvent, reset, setExecuting } = useWorkspace();
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<WishDetail>).detail;
@@ -25,6 +25,7 @@ export function StreamBus() {
         account: detail.account,
         context: detail.context,
         onEvent: (ev) => {
+          if (ev.type === "tool.call") appendAgentEvent({ kind: "tool.call", name: ev.name, input: ev.input });
           if (ev.type === "chat.delta") appendNarration(ev.delta);
           if (ev.type === "ui.render") {
             appendWidget({
@@ -41,6 +42,6 @@ export function StreamBus() {
     };
     window.addEventListener("wishd:wish", handler);
     return () => window.removeEventListener("wishd:wish", handler);
-  }, [appendWidget, patchWidget, dismissWidget, appendNarration, reset, setExecuting]);
+  }, [appendWidget, patchWidget, dismissWidget, appendNarration, appendAgentEvent, reset, setExecuting]);
   return null;
 }
