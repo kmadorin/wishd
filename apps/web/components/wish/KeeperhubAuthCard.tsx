@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import type { ReactElement } from "react";
 import { useAccount } from "wagmi";
+import { useWorkspace } from "@/store/workspace";
 
 type Props = {
+  id?: string;
   stepCardId?: string;
   intent?: string;
   userPortoAddress?: string;
@@ -12,8 +14,9 @@ type Props = {
 
 type Phase = "idle" | "pending" | "success" | "error";
 
-export function KeeperhubAuthCard({ stepCardId, intent, userPortoAddress }: Props): ReactElement {
+export function KeeperhubAuthCard({ id, stepCardId, intent, userPortoAddress }: Props): ReactElement {
   const { address } = useAccount();
+  const dismissWidget = useWorkspace((s) => s.dismissWidget);
   const [phase, setPhase] = useState<Phase>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -49,6 +52,12 @@ export function KeeperhubAuthCard({ stepCardId, intent, userPortoAddress }: Prop
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, [handleMessage]);
+
+  useEffect(() => {
+    if (phase !== "success" || !id) return;
+    const t = setTimeout(() => dismissWidget(id), 1500);
+    return () => clearTimeout(t);
+  }, [phase, id, dismissWidget]);
 
   async function handleConnect(): Promise<void> {
     setPhase("pending");
@@ -95,7 +104,7 @@ export function KeeperhubAuthCard({ stepCardId, intent, userPortoAddress }: Prop
       )}
 
       {phase === "success" && (
-        <p className="text-xs text-green-600 font-semibold">KeeperHub connected. Retrying your request…</p>
+        <p className="text-xs text-green-600 font-semibold">KeeperHub connected ✓</p>
       )}
 
       {phase === "error" && (
