@@ -15,7 +15,8 @@ import {
 import { CLIENT_INTENT_SCHEMAS } from "@/lib/intentRegistry.client";
 import { prepareIntent, PrepareError } from "@/lib/prepareIntent";
 import { AssetPicker } from "./AssetPicker";
-import { CHAIN_ID_BY_SLUG } from "@plugins/uniswap/intents";
+import { CHAIN_ID_BY_SLUG, applyAssetChange } from "@plugins/uniswap/intents";
+import { FlipButton } from "@/components/primitives/FlipButton";
 
 const CHIPS: Array<{ label: string; intent: string; values: Record<string, string> }> = [
   {
@@ -83,6 +84,18 @@ export function WishComposer() {
     setIntentId(id);
     setValues(next ? defaultsFor(next) : {});
     setOpenPillKey(null);
+  }
+
+  function setAssetField(side: "in" | "out", next: string) {
+    setValues((s) => {
+      const prev = { assetIn: s.assetIn ?? "", assetOut: s.assetOut ?? "" };
+      const updated = applyAssetChange(side, next, prev);
+      return { ...s, assetIn: updated.assetIn, assetOut: updated.assetOut };
+    });
+  }
+
+  function flipAssets() {
+    setValues((s) => ({ ...s, assetIn: s.assetOut ?? "", assetOut: s.assetIn ?? "" }));
   }
 
   function setField(key: string, v: string) {
@@ -297,11 +310,24 @@ export function WishComposer() {
               {schema?.fields.length ? (
                 renderSentenceParts(schema).map((part, i) => {
                   if (part.kind === "connector") {
-                    return <SentenceConnector key={`connector-${i}`}>{part.text}</SentenceConnector>;
+                    const parts = renderSentenceParts(schema);
+                    const next = parts[i + 1];
+                    const showFlip =
+                      schema.intent === "uniswap.swap" &&
+                      next &&
+                      next.kind === "field" &&
+                      (next as { kind: "field"; key: string }).key === "assetOut";
+                    return (
+                      <SentenceConnector key={`connector-${i}`}>
+                        {part.text}
+                        {showFlip && <FlipButton onClick={flipAssets} />}
+                      </SentenceConnector>
+                    );
                   }
 
                   const field = schema.fields.find((f) => f.key === part.key);
                   if (!field) return null;
+                  const isAssetField = field.type === "asset" && (field.key === "assetIn" || field.key === "assetOut");
                   return (
                     <FieldPill
                       key={field.key}
@@ -309,9 +335,16 @@ export function WishComposer() {
                       value={values[field.key] ?? ""}
                       open={openPillKey === field.key}
                       onOpenChange={(o) => setOpenPillKey(o ? field.key : null)}
-                      onChange={(v) => setField(field.key, v)}
+                      onChange={(v) => {
+                        if (isAssetField) {
+                          setAssetField(field.key === "assetIn" ? "in" : "out", v);
+                        } else {
+                          setField(field.key, v);
+                        }
+                      }}
                       disabled={busy}
                       chainId={CHAIN_ID_BY_SLUG[values.chain ?? ""] ?? CHAIN_ID_BY_SLUG["ethereum-sepolia"]}
+                      address={address}
                     />
                   );
                 })
@@ -400,6 +433,7 @@ function FieldPill({
   onChange,
   disabled,
   chainId,
+  address,
 }: {
   field: IntentField;
   value: string;
@@ -408,6 +442,7 @@ function FieldPill({
   onChange: (v: string) => void;
   disabled?: boolean;
   chainId?: number;
+  address?: `0x${string}` | string;
 }) {
   if (field.type === "amount") {
     return (
@@ -432,6 +467,10 @@ function FieldPill({
         value={value}
         onChange={onChange}
         ariaLabel={ariaLabelForField(field)}
+        address={address}
+        open={open}
+        onOpenChange={onOpenChange}
+        variant={field.key === "assetOut" ? "to" : "from"}
       />
     );
   }
