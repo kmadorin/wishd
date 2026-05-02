@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useWorkspace } from "@/store/workspace";
 import { startStream } from "./EventStream";
+import { clientHasKeeperForIntent } from "@/lib/keepers/clientRegistry";
 
 type WishDetail = {
   wish: string;
@@ -22,7 +23,8 @@ export function StreamBus() {
       if (detail.reset) reset();
       setExecuting(true);
 
-      const isPostExec = detail.context?.confirmed === true && typeof detail.context?.intent === "string";
+      const intentId = typeof detail.context?.intent === "string" ? detail.context.intent : null;
+      const isPostExec = detail.context?.confirmed === true && intentId !== null && clientHasKeeperForIntent(intentId);
       const skeletonId = isPostExec ? `kh-skeleton-${Date.now()}` : null;
       let hydrated = false;
       if (skeletonId) {
