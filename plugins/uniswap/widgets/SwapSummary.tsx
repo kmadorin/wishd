@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { WidgetCard } from "../../../apps/web/components/primitives/WidgetCard";
 import { AICheckPanel } from "../../../apps/web/components/primitives/AICheckPanel";
-import { StepCard } from "../../../apps/web/components/primitives/StepCard";
 import { AssetPicker } from "../../../apps/web/components/wish/AssetPicker";
 import { useWorkspace } from "../../../apps/web/store/workspace";
 import type { SwapQuote, SwapConfig, Call, KeeperOffer } from "../types";
@@ -143,12 +142,7 @@ export function SwapSummary(props: SwapSummaryProps) {
   const txCount = approvalCall ? "2 TX" : "1 TX";
 
   return (
-    <StepCard
-      step="STEP 02"
-      title="your swap, materialized"
-      sub="tweak amounts here. AI re-checks live."
-    >
-      <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3">
         {/* Sepolia banner */}
         {chainId === 11155111 && (
           <div className="rounded-sm bg-warn-2 border border-warn px-3 py-2 text-sm text-ink-2">
@@ -328,6 +322,5 @@ export function SwapSummary(props: SwapSummaryProps) {
           </div>
         )}
       </div>
-    </StepCard>
   );
 }

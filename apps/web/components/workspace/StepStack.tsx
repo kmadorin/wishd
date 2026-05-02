@@ -14,6 +14,16 @@ const STEP_LABELS: Record<string, { step: string; title: string; sub?: string }>
     sub: "review and execute",
   },
   "keeperhub-auth": { step: "STEP 04", title: "automate next time?", sub: "connect KeeperHub to enable keepers" },
+  "swap-summary": {
+    step: "STEP 02",
+    title: "your swap, materialized",
+    sub: "tweak amounts here. AI re-checks live.",
+  },
+  "swap-execute": {
+    step: "STEP 03",
+    title: "execute",
+    sub: "native · don't close the tab",
+  },
 };
 
 export function StepStack() {
