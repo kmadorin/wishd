@@ -86,6 +86,16 @@ describe("KeeperDeployFlow", () => {
     expect((compInput as HTMLInputElement).value).toBe("1000");
   });
 
+  it("humanizes Porto RPC validation error in error phase", async () => {
+    mutateAsync.mockRejectedValue(new Error("Invalid parameters were provided to the RPC method."));
+    renderReviewPhase();
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+    await waitFor(() => expect(screen.getByText(/usually a config mismatch/i)).toBeInTheDocument());
+    expect(screen.getByText(/technical details/i)).toBeInTheDocument();
+    // raw text inside <details><pre>
+    expect(screen.getByText(/Invalid parameters were provided to the RPC method/i)).toBeInTheDocument();
+  });
+
   it("collapses 'allowed contract calls' by default and toggles open", async () => {
     const user = userEvent.setup();
     renderReviewPhase();

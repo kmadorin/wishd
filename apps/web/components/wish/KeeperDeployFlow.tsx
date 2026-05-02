@@ -14,6 +14,16 @@ import { lookup, addressShort } from "@/lib/addressBook";
 
 type Phase = "review" | "granting" | "deploying" | "confirmed" | "error";
 
+function humanizeGrantError(raw: string): string {
+  if (/Invalid parameters were provided to the RPC method/i.test(raw)) {
+    return "Wallet rejected the request — usually a config mismatch in the keeper. Try again, or reach out so we can fix it.";
+  }
+  if (/User rejected/i.test(raw)) {
+    return "You declined the wallet request. Tap retry to try again.";
+  }
+  return raw;
+}
+
 export function KeeperDeployFlow(): ReactElement | null {
   const { open, payload, close } = useKeeperDeploy();
   const { address } = useAccount();
@@ -198,7 +208,11 @@ export function KeeperDeployFlow(): ReactElement | null {
         )}
         {phase === "error" && (
           <section>
-            <p className="text-sm text-warn mb-2">{errorMsg ?? "unknown error"}</p>
+            <p className="text-sm text-warn mb-2">{humanizeGrantError(errorMsg ?? "unknown error")}</p>
+            <details className="text-[11px] text-ink-3 mb-2">
+              <summary>technical details</summary>
+              <pre className="whitespace-pre-wrap break-words">{errorMsg ?? ""}</pre>
+            </details>
             <button type="button" className="text-xs underline" onClick={() => setPhase("review")}>back</button>
           </section>
         )}
