@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { getNative, getTokens } from "@wishd/tokens";
 import { tokenIconClass, tokenSymbol } from "@/lib/tokenIcons";
@@ -30,12 +30,16 @@ export function AssetPicker(props: AssetPickerProps) {
   const { chainId, value, onChange, address, variant = "from" } = props;
   const all = useMemo(() => options(chainId), [chainId]);
   const tokenSymbols = useMemo(() => all.map((o) => o.symbol), [all]);
-  const { balances } = useBalances({ chainId, address, tokens: tokenSymbols });
+  const { balances, isLoading } = useBalances({ chainId, address, tokens: tokenSymbols });
 
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = props.open !== undefined && props.onOpenChange !== undefined;
   const open = isControlled ? !!props.open : internalOpen;
-  const setOpen = (o: boolean) => (isControlled ? props.onOpenChange!(o) : setInternalOpen(o));
+  const onOpenChange = props.onOpenChange;
+  const setOpen = useCallback(
+    (o: boolean) => (isControlled ? onOpenChange!(o) : setInternalOpen(o)),
+    [isControlled, onOpenChange],
+  );
 
   const [q, setQ] = useState("");
   const filtered = useMemo(() => {
@@ -75,7 +79,7 @@ export function AssetPicker(props: AssetPickerProps) {
     }
     document.addEventListener("mousedown", onDocMouseDown);
     return () => document.removeEventListener("mousedown", onDocMouseDown);
-  }, [open]);
+  }, [open, setOpen]);
 
   function commit(symbol: string) {
     onChange(symbol);
@@ -106,6 +110,7 @@ export function AssetPicker(props: AssetPickerProps) {
         aria-label={anchorAria}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-controls={open ? popoverId : undefined}
         onClick={() => setOpen(!open)}
         className={`inline-flex items-center gap-1.5 ${variantClass} border-[1.5px] rounded-pill px-2.5 py-1 font-bold text-sm`}
       >
@@ -148,7 +153,9 @@ export function AssetPicker(props: AssetPickerProps) {
                   <span className={tokenIconClass(o.symbol)}>{tokenSymbol(o.symbol)}</span>
                   <span className="font-bold">{o.symbol}</span>
                   <span className="text-ink-3 truncate">{o.name}</span>
-                  <span className="ml-auto font-mono text-xs text-ink-2">{balances[o.symbol] ?? "—"}</span>
+                  <span className="ml-auto font-mono text-xs text-ink-2">
+                    {isLoading ? "…" : (balances[o.symbol] ?? "—")}
+                  </span>
                 </button>
               </li>
             ))}
