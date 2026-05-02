@@ -2,13 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ReactElement } from "react";
+import { formatUnits, parseUnits } from "viem";
 import { useAccount } from "wagmi";
 import { useGrantPermissions } from "porto/wagmi/Hooks";
 import { useKeeperDeploy } from "@/store/keeperDeploy";
 import { clientGetKeeper } from "@/lib/keepers/clientRegistry";
 import { buildPortoGrantPayload } from "@/lib/keepers/buildPortoGrantPayload";
 import type { DelegationProposal } from "@/server/keepers/proposeDelegation";
-import type { SpendPeriod, Address } from "@wishd/plugin-sdk";
+import type { SpendPeriod, Address, Keeper } from "@wishd/plugin-sdk";
+import { lookup, addressShort } from "@/lib/addressBook";
 
 type Phase = "review" | "granting" | "deploying" | "confirmed" | "error";
 
@@ -105,61 +107,79 @@ export function KeeperDeployFlow(): ReactElement | null {
 
         {phase === "review" && (
           <section className="space-y-3">
-            <Block label="this session may call">
-              <ul className="text-xs space-y-1">
-                {keeper.delegation.fixed.calls.map((c) => (
-                  <li key={c.to} className="font-mono">{c.to} <span className="text-ink-3">{c.signature}</span></li>
-                ))}
-              </ul>
-            </Block>
-            <Block label="expiry">
-              {keeper.delegation.expiryPolicy.kind === "unlimited" && (
-                <span className="text-xs">no expiry · revoke anytime in your Porto wallet</span>
+            <div className="border border-dashed border-ink rounded-md p-3 bg-surface-2 text-sm leading-relaxed">
+              <strong className="block text-xs uppercase tracking-wider text-ink-3 mb-1">What this lets us do</strong>
+              <p>{keeper.manifest.explainer.whatThisDoes}</p>
+              {payload.suggestedDelegation?.rationale && (
+                <p className="mt-2 text-ink-3"><em>Agent note:</em> {payload.suggestedDelegation.rationale}</p>
               )}
-              {keeper.delegation.expiryPolicy.kind === "fixed" && (
-                <span className="text-xs">{keeper.delegation.expiryPolicy.days} days (fixed)</span>
-              )}
-              {keeper.delegation.expiryPolicy.kind === "bounded" && (
-                <span className="text-xs">up to {keeper.delegation.expiryPolicy.maxDays} days</span>
-              )}
-            </Block>
-            <Block label="spend caps">
+            </div>
+
+            <Block label="Spend caps · per period">
               {proposal.spend.map((s) => {
-                const bound = keeper.delegation.kind === "porto-permissions"
-                  ? keeper.delegation.spend.bounds.find((b) => b.token === s.token)
-                  : undefined;
+                if (keeper.delegation.kind !== "porto-permissions") return null;
+                const bound = keeper.delegation.spend.bounds.find((b) => b.token === s.token);
+                const tokenLabel =
+                  keeper.manifest.explainer.perToken[s.token]?.label
+                  ?? lookup(s.token)?.label
+                  ?? addressShort(s.token);
+                const decimals =
+                  keeper.manifest.explainer.perToken[s.token]?.decimals
+                  ?? lookup(s.token)?.decimals
+                  ?? 18;
+                const display = formatUnits(s.limit, decimals);
+                const maxDisplay = bound ? formatUnits(bound.maxLimit, decimals) : "—";
                 return (
                   <div key={s.token} className="grid grid-cols-[1fr_auto_auto] gap-2 items-center text-xs">
-                    <span className="font-mono">{s.token.slice(0, 10)}…</span>
+                    <span>{tokenLabel}</span>
                     <input
                       type="text"
                       inputMode="decimal"
-                      className="bg-surface-2 border border-rule rounded px-2 py-1 w-28 font-mono"
-                      value={s.limit.toString()}
+                      aria-label={`spend cap ${tokenLabel}`}
+                      className="bg-surface-2 border border-rule rounded px-2 py-1 w-28 font-mono text-right"
+                      value={display}
                       onChange={(e) => {
-                        const v = e.target.value.replace(/[^0-9]/g, "");
-                        if (!v) return;
-                        const n = BigInt(v);
-                        const max = bound?.maxLimit ?? n;
-                        setSpendLimit(s.token, n > max ? max : n);
+                        const cleaned = e.target.value.replace(/[^0-9.]/g, "");
+                        if (!cleaned) return;
+                        let parsed: bigint;
+                        try { parsed = parseUnits(cleaned as `${number}`, decimals); }
+                        catch { return; }
+                        const max = bound?.maxLimit ?? parsed;
+                        setSpendLimit(s.token, parsed > max ? max : parsed);
                       }}
                     />
                     <select
                       className="bg-surface-2 border border-rule rounded px-2 py-1 text-xs"
                       value={s.period}
-                      onChange={(e) => setSpendPeriod(s.token, e.target.value as SpendPeriod)}
+                      onChange={(ev) => setSpendPeriod(s.token, ev.target.value as SpendPeriod)}
                     >
                       {(bound?.periods ?? ["month"]).map((p) => (
                         <option key={p} value={p}>{p}</option>
                       ))}
                     </select>
+                    <span className="col-span-3 text-[10px] font-mono text-ink-3 text-right">max {maxDisplay}/{s.period}</span>
                   </div>
                 );
               })}
+              {keeper.manifest.explainer.recommendedSpendRationale && (
+                <p className="text-[11px] italic text-ink-3 mt-1">{keeper.manifest.explainer.recommendedSpendRationale}</p>
+              )}
             </Block>
-            {payload.suggestedDelegation?.rationale && (
-              <p className="text-xs text-ink-3 italic">agent suggested: {payload.suggestedDelegation.rationale}</p>
-            )}
+
+            <Block label="Expiry">
+              {keeper.delegation.kind === "porto-permissions" && keeper.delegation.expiryPolicy.kind === "unlimited" && (
+                <span className="text-xs">no expiry · revoke anytime in your Porto wallet</span>
+              )}
+              {keeper.delegation.kind === "porto-permissions" && keeper.delegation.expiryPolicy.kind === "fixed" && (
+                <span className="text-xs">{keeper.delegation.expiryPolicy.days} days (fixed)</span>
+              )}
+              {keeper.delegation.kind === "porto-permissions" && keeper.delegation.expiryPolicy.kind === "bounded" && (
+                <span className="text-xs">up to {keeper.delegation.expiryPolicy.maxDays} days</span>
+              )}
+            </Block>
+
+            <CallsAccordion keeper={keeper} />
+
             <button
               type="button"
               className="bg-accent border-[1.5px] border-ink rounded-pill px-4 py-1.5 text-sm font-semibold"
@@ -192,6 +212,44 @@ function Block(props: { label: string; children: React.ReactNode }): ReactElemen
     <div className="border-t border-rule pt-2">
       <div className="font-mono text-[10px] tracking-[0.12em] uppercase text-ink-3 mb-1">{props.label}</div>
       {props.children}
+    </div>
+  );
+}
+
+function CallsAccordion(props: { keeper: Keeper }): ReactElement | null {
+  const [open, setOpen] = useState(false);
+  if (props.keeper.delegation.kind !== "porto-permissions") return null;
+  const calls = props.keeper.delegation.fixed.calls;
+  return (
+    <div className="border-t border-rule pt-2">
+      <button
+        type="button"
+        className="w-full flex justify-between items-center font-mono text-[10px] tracking-[0.12em] uppercase text-ink-3"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span>Allowed contract calls ({calls.length})</span>
+        <span>{open ? "▴" : "▾"}</span>
+      </button>
+      {open && (
+        <ul className="mt-2 space-y-1.5 text-xs">
+          {calls.map((c) => {
+            const e = props.keeper.manifest.explainer.perCall[c.to] ?? {
+              label: lookup(c.to)?.label ?? addressShort(c.to),
+              purpose: c.signature,
+            };
+            return (
+              <li key={c.to} className="grid grid-cols-[1fr_auto] gap-2">
+                <div>
+                  <strong>{e.label}</strong>
+                  <span className="text-ink-3"> — {e.purpose}</span>
+                </div>
+                <span className="font-mono text-[10px] text-ink-3">{addressShort(c.to)}</span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
