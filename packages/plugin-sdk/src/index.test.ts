@@ -23,6 +23,7 @@ describe("plugin-sdk", () => {
         chains: [1],
         trust: "verified",
         appliesTo: [],
+        explainer: { whatThisDoes: "test", perCall: {}, perToken: {} },
       },
       delegation: {
         kind: "comet-allow",
@@ -101,6 +102,7 @@ describe("keeper types", () => {
       plugins: ["compound-v3"],
       trust: "verified",
       appliesTo: [{ intent: "compound-v3.deposit" }],
+      explainer: { whatThisDoes: "test", perCall: {}, perToken: {} },
     };
     expectTypeOf(m.appliesTo).toEqualTypeOf<Array<{ intent: string }>>();
   });
@@ -156,6 +158,7 @@ describe("keeper types", () => {
         id: "x", name: "X", description: "d", version: "0.0.0",
         chains: [11155111], plugins: ["compound-v3"], trust: "verified",
         appliesTo: [{ intent: "compound-v3.deposit" }],
+        explainer: { whatThisDoes: "test", perCall: {}, perToken: {} },
       },
       delegation: {
         kind: "porto-permissions",
