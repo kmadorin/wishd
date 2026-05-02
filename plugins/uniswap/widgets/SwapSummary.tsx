@@ -6,6 +6,8 @@ import { WidgetCard } from "../../../apps/web/components/primitives/WidgetCard";
 import { AICheckPanel } from "../../../apps/web/components/primitives/AICheckPanel";
 import { AssetPicker } from "../../../apps/web/components/wish/AssetPicker";
 import { useWorkspace } from "../../../apps/web/store/workspace";
+import { applyAssetChange } from "../intents";
+import { useBalances } from "../../../apps/web/lib/useBalances";
 import type { SwapQuote, SwapConfig, Call, KeeperOffer } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -59,18 +61,22 @@ export type SwapSummaryProps = {
 // ---------------------------------------------------------------------------
 
 export function SwapSummary(props: SwapSummaryProps) {
-  const { config, initialQuote, initialQuoteAt, approvalCall, balance, keeperOffers, summaryId } = props;
+  const { config, initialQuote, initialQuoteAt, approvalCall, keeperOffers, summaryId } = props;
 
   const [amountIn, setAmountIn] = useState(config.amountIn);
   const [assetIn, setAssetIn] = useState(config.assetIn);
   const [assetOut, setAssetOut] = useState(config.assetOut);
   const [slippageBps, setSlippageBps] = useState(config.slippageBps);
   const [submitting, setSubmitting] = useState(false);
+  const [editPending, setEditPending] = useState(false);
 
   const debouncedAmount = useDebounce(amountIn, 300);
   const executing = useWorkspace((s) => s.executing);
 
   const { chainId, swapper, tokenIn, tokenOut } = config;
+
+  const liveBalances = useBalances({ chainId, address: swapper, tokens: [assetIn, assetOut] });
+  const balance = liveBalances.balances[assetIn] ?? props.balance;
 
   const quoteQuery = useQuery<SwapQuote>({
     queryKey: ["uniswap.quote", chainId, tokenIn, tokenOut, debouncedAmount, swapper, slippageBps, assetIn, assetOut],
@@ -110,10 +116,27 @@ export function SwapSummary(props: SwapSummaryProps) {
   const insufficient = props.insufficient && amountIn === config.amountIn;
   const ctaDisabled = submitting || executing || insufficient || !quoteQuery.data || !!quoteQuery.error;
 
+  function setAssetInGuarded(next: string) {
+    setEditPending(true);
+    const updated = applyAssetChange("in", next, { assetIn, assetOut });
+    setAssetIn(updated.assetIn);
+    setAssetOut(updated.assetOut);
+  }
+  function setAssetOutGuarded(next: string) {
+    setEditPending(true);
+    const updated = applyAssetChange("out", next, { assetIn, assetOut });
+    setAssetIn(updated.assetIn);
+    setAssetOut(updated.assetOut);
+  }
   function handleFlip() {
+    setEditPending(true);
     setAssetIn(assetOut);
     setAssetOut(assetIn);
   }
+
+  useEffect(() => {
+    if (quoteQuery.data && !quoteQuery.isFetching) setEditPending(false);
+  }, [quoteQuery.data, quoteQuery.isFetching]);
 
   function handleExecute() {
     if (ctaDisabled) return;
@@ -172,8 +195,10 @@ export function SwapSummary(props: SwapSummaryProps) {
                 <AssetPicker
                   chainId={chainId}
                   value={assetIn}
-                  onChange={setAssetIn}
+                  onChange={setAssetInGuarded}
                   ariaLabel="select token in"
+                  address={swapper}
+                  variant="from"
                 />
               </div>
             </div>
@@ -199,8 +224,10 @@ export function SwapSummary(props: SwapSummaryProps) {
                 <AssetPicker
                   chainId={chainId}
                   value={assetOut}
-                  onChange={setAssetOut}
+                  onChange={setAssetOutGuarded}
                   ariaLabel="select token out"
+                  address={swapper}
+                  variant="to"
                 />
               </div>
             </div>
@@ -214,7 +241,7 @@ export function SwapSummary(props: SwapSummaryProps) {
           {/* Stats row */}
           <WidgetCard.Stats
             items={[
-              { k: "rate", v: quote.rate ? `${quote.rate} ${assetOut}/${assetIn}` : "—" },
+              { k: "rate", v: quote.rate || "—" },
               { k: "min received", v: quote.amountOutMin ? `${quote.amountOutMin} ${assetOut}` : "—" },
               { k: "route", v: quote.route || "—" },
               { k: "network fee", v: quote.gasFeeUSD ? `~$${quote.gasFeeUSD}` : (quote.networkFee ?? "—") },
@@ -293,6 +320,11 @@ export function SwapSummary(props: SwapSummaryProps) {
               : { ok: true, text: "price impact data not available" },
           ]}
         />
+
+        {/* NL summary — hidden while user is making edits */}
+        {editPending ? (
+          <div className="font-mono text-[11px] text-ink-3 px-2">edit pending — re-running checks…</div>
+        ) : null}
 
         {/* Keeper offers */}
         {keeperOffers.length > 0 && (
