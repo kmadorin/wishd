@@ -60,7 +60,7 @@ export function KeeperDeployFlow(): ReactElement | null {
       const result = await grant.mutateAsync({
         chainId: 11155111 as 11155111,
         ...params,
-      } as Parameters<typeof grant.mutateAsync>[0]);
+      });
       const permissionsId = result.id as `0x${string}`;
 
       setPhase("deploying");
