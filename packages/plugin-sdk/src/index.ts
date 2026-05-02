@@ -112,6 +112,17 @@ export type WorkflowParams = {
   permissionsId: `0x${string}`;
 };
 
+export type KeeperExplainer = {
+  /** 1-2 sentence plain-English summary of what the keeper does on the user's behalf. */
+  whatThisDoes: string;
+  /** Per-call address: the human label and the action's purpose. */
+  perCall: Record<Address, { label: string; purpose: string }>;
+  /** Per-token address: human symbol and decimals (so the modal can render decimal inputs). */
+  perToken: Record<Address, { label: string; decimals: number }>;
+  /** Optional rationale shown beneath spend caps; null/absent if not applicable. */
+  recommendedSpendRationale?: string;
+};
+
 export type KeeperManifest = {
   id: string;
   name: string;
@@ -121,6 +132,7 @@ export type KeeperManifest = {
   plugins: string[];
   trust: TrustTier;
   appliesTo: Array<{ intent: string }>;
+  explainer: KeeperExplainer;
 };
 
 export type ServerEvent =
