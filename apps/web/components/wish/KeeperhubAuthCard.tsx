@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import type { ReactElement } from "react";
 import { useAccount } from "wagmi";
+import { useWorkspace } from "@/store/workspace";
 
 type Props = {
+  id?: string;
   stepCardId?: string;
   intent?: string;
   userPortoAddress?: string;
@@ -12,10 +14,12 @@ type Props = {
 
 type Phase = "idle" | "pending" | "success" | "error";
 
-export function KeeperhubAuthCard({ stepCardId, intent, userPortoAddress }: Props): ReactElement {
+export function KeeperhubAuthCard({ id, stepCardId, intent, userPortoAddress }: Props): ReactElement {
   const { address } = useAccount();
+  const dismissWidget = useWorkspace((s) => s.dismissWidget);
   const [phase, setPhase] = useState<Phase>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [authUrl, setAuthUrl] = useState<string | null>(null);
 
   const handleMessage = useCallback(
     (event: MessageEvent) => {
@@ -50,6 +54,12 @@ export function KeeperhubAuthCard({ stepCardId, intent, userPortoAddress }: Prop
     return () => window.removeEventListener("message", handleMessage);
   }, [handleMessage]);
 
+  useEffect(() => {
+    if (phase !== "success" || !id) return;
+    const t = setTimeout(() => dismissWidget(id), 1500);
+    return () => clearTimeout(t);
+  }, [phase, id, dismissWidget]);
+
   async function handleConnect(): Promise<void> {
     setPhase("pending");
     setErrorMsg(null);
@@ -60,7 +70,8 @@ export function KeeperhubAuthCard({ stepCardId, intent, userPortoAddress }: Prop
         throw new Error(body.error ?? `request failed ${res.status}`);
       }
       const { authUrl } = (await res.json()) as { authUrl: string; state: string };
-      window.open(authUrl, "_blank", "width=600,height=720");
+      setAuthUrl(authUrl);
+      window.open(authUrl, "wishd:kh:auth", "width=600,height=720");
       // Phase stays "pending" until postMessage arrives
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : String(err));
@@ -91,11 +102,21 @@ export function KeeperhubAuthCard({ stepCardId, intent, userPortoAddress }: Prop
       )}
 
       {phase === "pending" && (
-        <p className="text-xs text-ink-3">Waiting for authorization in the pop-up window…</p>
+        <div className="space-y-2">
+          <p className="text-xs text-ink-3">Waiting for authorization in the pop-up window…</p>
+          <button
+            type="button"
+            className="text-xs underline disabled:opacity-50"
+            disabled={!authUrl}
+            onClick={() => authUrl && window.open(authUrl, "wishd:kh:auth", "width=600,height=720")}
+          >
+            reopen pop-up
+          </button>
+        </div>
       )}
 
       {phase === "success" && (
-        <p className="text-xs text-green-600 font-semibold">KeeperHub connected. Retrying your request…</p>
+        <p className="text-xs text-green-600 font-semibold">KeeperHub connected ✓</p>
       )}
 
       {phase === "error" && (

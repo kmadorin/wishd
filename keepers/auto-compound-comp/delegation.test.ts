@@ -10,15 +10,23 @@ describe("auto-compound-comp delegation", () => {
     expect(delegation.kind).toBe("porto-permissions");
   });
 
-  it("allowlist contains exactly the five keeper-touched contracts", () => {
+  it("allowlist contains exactly the five keeper-touched contracts with signatures", () => {
     if (delegation.kind !== "porto-permissions") throw new Error("expected porto-permissions");
-    expect(new Set(delegation.fixed.calls)).toEqual(new Set([
+    expect(new Set(delegation.fixed.calls.map((c) => c.to))).toEqual(new Set([
       COMET_REWARDS_SEPOLIA,
       COMP_SEPOLIA,
       UNISWAP_ROUTER_SEPOLIA,
       USDC_SEPOLIA,
       COMET_USDC_SEPOLIA,
     ]));
+    for (const c of delegation.fixed.calls) {
+      expect(c.signature.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("feeToken is an ETH object with a decimal-string limit", () => {
+    if (delegation.kind !== "porto-permissions") throw new Error("expected porto-permissions");
+    expect(delegation.fixed.feeToken).toEqual({ symbol: "ETH", limit: "0.05" });
   });
 
   it("expiryPolicy is unlimited", () => {

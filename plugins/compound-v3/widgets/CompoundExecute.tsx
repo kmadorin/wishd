@@ -38,18 +38,6 @@ export type CompoundExecuteProps = {
   actionKind?: "deposit" | "withdraw";
   /** Widget id assigned by widgetRenderer (uuid). Used as stepCardId in wishd:wish event. */
   id?: string;
-  /** Agent-injected keeper offers; SuccessCard renders them when present. */
-  keeperOffers?: Array<{
-    id?: string;
-    keeperId?: string;
-    badge?: string;
-    title: string;
-    desc: string;
-    featured?: boolean;
-    comingSoon?: boolean;
-    state?: { kind: "not_deployed" } | { kind: "deployed_enabled"; workflowId: string; permissionsId: `0x${string}` } | { kind: "deployed_disabled"; workflowId: string; permissionsId: `0x${string}` };
-    suggestedDelegation?: unknown;
-  }>;
 };
 
 export function CompoundExecute(props: CompoundExecuteProps) {
@@ -191,7 +179,6 @@ export function CompoundExecute(props: CompoundExecuteProps) {
               {txHash.slice(0,10)}…{txHash.slice(-8)}
             </a> },
         ]}
-        keeperOffers={isWithdraw ? [] : (props.keeperOffers ?? [])}
         primaryAction={{
           label: "make another wish",
           onClick: () => reset(),

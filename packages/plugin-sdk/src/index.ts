@@ -50,8 +50,8 @@ export type SpendPeriod = "day" | "week" | "month";
 
 export type PortoPermissionsBounds = {
   fixed: {
-    calls: Address[];
-    feeToken: Address;
+    calls: Array<{ to: Address; signature: string }>;
+    feeToken: { symbol: string; limit: `${number}` | `${number}.${number}` };
   };
   expiryPolicy: ExpiryPolicy;
   spend: {
@@ -73,7 +73,7 @@ export type DelegationSpec = PortoPermissionsSpec | CometAllowSpec;
 /** Runtime payload sent into Porto's wallet_grantPermissions. */
 export type PortoPermissionsGrant = {
   expiry: number;
-  feeToken?: { limit: string; symbol: string };
+  feeToken: { limit: `${number}` | `${number}.${number}`; symbol: string } | null;
   key: { type: "secp256k1"; publicKey: Address };
   permissions: {
     calls: Array<{ to: Address; signature: string }>;

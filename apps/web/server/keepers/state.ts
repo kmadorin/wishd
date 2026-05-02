@@ -23,7 +23,7 @@ function nodeMatchesKeeper(node: KhWorkflowNode, keeper: Keeper, userPortoAddres
   if (!cfg) return false;
   if (cfg.userPortoAddress?.toLowerCase() !== userPortoAddress.toLowerCase()) return false;
   if (keeper.delegation.kind !== "porto-permissions") return false;
-  const allowlist = new Set(keeper.delegation.fixed.calls.map((a) => a.toLowerCase()));
+  const allowlist = new Set(keeper.delegation.fixed.calls.map((c) => c.to.toLowerCase()));
   return typeof cfg.contractAddress === "string" && allowlist.has(cfg.contractAddress.toLowerCase());
 }
 
