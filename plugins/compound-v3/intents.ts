@@ -29,4 +29,18 @@ export const compoundIntents: IntentSchema[] = [
     widget: "compound-withdraw-summary",
     slot: "flow",
   },
+  {
+    intent: "compound-v3.lend",
+    verb: "lend",
+    description: "supply tokens to earn yield",
+    fields: [
+      { key: "amount",   type: "amount",  required: true,  default: "10" },
+      { key: "asset",    type: "asset",   required: true,  default: "USDC", options: ["USDC"] },
+      { key: "protocol", type: "select",  required: true,  default: "compound-v3", options: ["compound-v3", "aave-v3", "morpho", "spark"] },
+      { key: "chain",    type: "chain",   required: true,  default: "ethereum-sepolia", options: ["ethereum-sepolia"] },
+    ],
+    connectors: { protocol: "on", chain: "·" },
+    widget: "compound-summary", // overridden by dispatcher when protocol != compound-v3
+    slot: "flow",
+  },
 ];

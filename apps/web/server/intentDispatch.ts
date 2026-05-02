@@ -114,6 +114,44 @@ export async function dispatchIntent(
     };
   }
 
+  if (intent === "compound-v3.lend") {
+    const protocol = String(input.body.protocol ?? "compound-v3");
+    if (protocol === "compound-v3") {
+      const chainId = requireChainId(input.body);
+      const prepared = await prepareDeposit({ amount, user, chainId, publicClient: input.publicClient });
+      const addrs = COMPOUND_ADDRESSES[chainId]!;
+      return {
+        prepared,
+        widget: {
+          id: newWidgetId(),
+          type: "compound-summary",
+          slot: "flow",
+          props: {
+            amount, asset: "USDC", market: "cUSDCv3",
+            needsApprove: prepared.meta.needsApprove,
+            summaryId: newWidgetId(),
+            amountWei: prepared.meta.amountWei,
+            chainId, user, comet: addrs.Comet, usdc: addrs.USDC,
+            calls: prepared.calls,
+            balance: prepared.meta.balance,
+            insufficient: prepared.meta.insufficient,
+          },
+        },
+      };
+    }
+    // Non-Compound protocols: return earn-demo widget echoing inputs, no on-chain.
+    const { address: _addr, ...rest } = input.body;
+    return {
+      prepared: { kind: "demo", intent, protocol } as Record<string, unknown>,
+      widget: {
+        id: newWidgetId(),
+        type: "earn-demo",
+        slot: "flow",
+        props: rest as Record<string, unknown>,
+      },
+    };
+  }
+
   const chainId = requireChainId(input.body);
 
   if (intent === "compound-v3.deposit") {
