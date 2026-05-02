@@ -50,8 +50,8 @@ export type SpendPeriod = "day" | "week" | "month";
 
 export type PortoPermissionsBounds = {
   fixed: {
-    calls: Address[];
-    feeToken: Address;
+    calls: Array<{ to: Address; signature: string }>;
+    feeToken: { symbol: string; limit: string };
   };
   expiryPolicy: ExpiryPolicy;
   spend: {

@@ -89,8 +89,8 @@ describe("keeper types", () => {
     const d: DelegationSpec = {
       kind: "porto-permissions",
       fixed: {
-        calls: ["0x0000000000000000000000000000000000000001" as Address],
-        feeToken: "0x0000000000000000000000000000000000000000" as Address,
+        calls: [{ to: "0x0000000000000000000000000000000000000001" as Address, signature: "approve(address,uint256)" }],
+        feeToken: { symbol: "ETH", limit: "0.05" },
       },
       expiryPolicy: { kind: "unlimited" },
       spend: {
@@ -139,7 +139,7 @@ describe("keeper types", () => {
       },
       delegation: {
         kind: "porto-permissions",
-        fixed: { calls: ["0x0000000000000000000000000000000000000001" as Address], feeToken: "0x0000000000000000000000000000000000000000" as Address },
+        fixed: { calls: [{ to: "0x0000000000000000000000000000000000000001" as Address, signature: "approve(address,uint256)" }], feeToken: { symbol: "ETH", limit: "0.05" } },
         expiryPolicy: { kind: "unlimited" },
         spend: { bounds: [], defaults: [] },
       },
