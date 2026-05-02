@@ -120,8 +120,17 @@ export function WishComposer() {
               ws.appendNarration(e.delta);
               ws.appendAgentEvent({ kind: "delta", text: e.delta });
             }
-            if (e.type === "ui.patch") ws.patchWidget(e.id, e.props);
-            if (e.type === "ui.dismiss") ws.dismissWidget(e.id);
+            if (e.type === "ui.patch") {
+              ws.appendAgentEvent({ kind: "ui.patch", widgetId: e.id });
+              ws.patchWidget(e.id, e.props);
+            }
+            if (e.type === "ui.dismiss") {
+              ws.appendAgentEvent({ kind: "ui.dismiss", widgetId: e.id });
+              ws.dismissWidget(e.id);
+            }
+            if (e.type === "notification") ws.appendAgentEvent({ kind: "notification", level: e.level, text: e.text });
+            if (e.type === "result") ws.appendAgentEvent({ kind: "result", ok: e.ok, cost: e.cost });
+            if (e.type === "error") ws.appendAgentEvent({ kind: "error", message: e.message });
             // ignore ui.render in narrate-only mode (server should not emit it)
           },
         });
@@ -144,12 +153,16 @@ export function WishComposer() {
       }, SKELETON_TIMEOUT_MS);
     });
 
+    ws.appendAgentEvent({ kind: "step", label: `prepare ${s.intent}`, status: "start" });
+    const tPrepare = performance.now();
     try {
       const out = await Promise.race([
         prepareIntent(s.intent, { ...vs, address: account.address }, { signal: controller.signal }),
         timeout,
       ]);
       if (timedOut) return;
+      ws.appendAgentEvent({ kind: "step", label: `prepare ${s.intent}`, status: "ok", ms: Math.round(performance.now() - tPrepare) });
+      ws.appendAgentEvent({ kind: "ui.render", widgetType: out.widget.type, widgetId: out.widget.id });
       ws.hydrateSkeleton(skeletonId, {
         id: out.widget.id,
         type: out.widget.type,
@@ -172,6 +185,7 @@ export function WishComposer() {
           : err instanceof Error
             ? err.message
             : "unknown error";
+      ws.appendAgentEvent({ kind: "step", label: `prepare ${s.intent}`, status: "fail", ms: Math.round(performance.now() - tPrepare) });
       ws.failSkeleton(skeletonId, msg);
     } finally {
       if (timer) clearTimeout(timer);
@@ -215,6 +229,7 @@ export function WishComposer() {
             ws.appendAgentEvent({ kind: "delta", text: e.delta });
           }
           if (e.type === "ui.render") {
+            ws.appendAgentEvent({ kind: "ui.render", widgetType: e.widget.type, widgetId: e.widget.id });
             ws.hydrateSkeleton(skeletonId, {
               id: e.widget.id,
               type: e.widget.type,
@@ -229,9 +244,20 @@ export function WishComposer() {
               }),
             );
           }
-          if (e.type === "ui.patch") ws.patchWidget(e.id, e.props);
-          if (e.type === "ui.dismiss") ws.dismissWidget(e.id);
-          if (e.type === "error") ws.failSkeleton(skeletonId, e.message);
+          if (e.type === "ui.patch") {
+            ws.appendAgentEvent({ kind: "ui.patch", widgetId: e.id });
+            ws.patchWidget(e.id, e.props);
+          }
+          if (e.type === "ui.dismiss") {
+            ws.appendAgentEvent({ kind: "ui.dismiss", widgetId: e.id });
+            ws.dismissWidget(e.id);
+          }
+          if (e.type === "notification") ws.appendAgentEvent({ kind: "notification", level: e.level, text: e.text });
+          if (e.type === "result") ws.appendAgentEvent({ kind: "result", ok: e.ok, cost: e.cost });
+          if (e.type === "error") {
+            ws.appendAgentEvent({ kind: "error", message: e.message });
+            ws.failSkeleton(skeletonId, e.message);
+          }
         },
       });
     } finally {

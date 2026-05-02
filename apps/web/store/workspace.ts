@@ -18,7 +18,14 @@ export type SkeletonInit = {
 
 export type AgentEvent =
   | { kind: "tool.call"; name: string; input: unknown; at: number }
-  | { kind: "delta"; text: string; at: number };
+  | { kind: "delta"; text: string; at: number }
+  | { kind: "ui.render"; widgetType: string; widgetId: string; at: number }
+  | { kind: "ui.patch"; widgetId: string; at: number }
+  | { kind: "ui.dismiss"; widgetId: string; at: number }
+  | { kind: "notification"; level: "info" | "warn" | "error"; text: string; at: number }
+  | { kind: "result"; ok: boolean; cost?: number; at: number }
+  | { kind: "error"; message: string; at: number }
+  | { kind: "step"; label: string; status: "start" | "ok" | "fail"; ms?: number; at: number };
 
 type State = {
   widgets: WidgetInstance[];

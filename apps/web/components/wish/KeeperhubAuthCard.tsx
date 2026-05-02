@@ -17,6 +17,7 @@ type Phase = "idle" | "pending" | "success" | "error";
 export function KeeperhubAuthCard({ id, stepCardId, intent, userPortoAddress }: Props): ReactElement {
   const { address } = useAccount();
   const dismissWidget = useWorkspace((s) => s.dismissWidget);
+  const appendAgentEvent = useWorkspace((s) => s.appendAgentEvent);
   const [phase, setPhase] = useState<Phase>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [authUrl, setAuthUrl] = useState<string | null>(null);
@@ -63,6 +64,8 @@ export function KeeperhubAuthCard({ id, stepCardId, intent, userPortoAddress }: 
   async function handleConnect(): Promise<void> {
     setPhase("pending");
     setErrorMsg(null);
+    appendAgentEvent({ kind: "step", label: "kh.auth.start", status: "start" });
+    const t0 = performance.now();
     try {
       const res = await fetch("/api/keepers/kh-auth/start", { method: "POST" });
       if (!res.ok) {
@@ -71,10 +74,14 @@ export function KeeperhubAuthCard({ id, stepCardId, intent, userPortoAddress }: 
       }
       const { authUrl } = (await res.json()) as { authUrl: string; state: string };
       setAuthUrl(authUrl);
+      appendAgentEvent({ kind: "step", label: "kh.auth.start", status: "ok", ms: Math.round(performance.now() - t0) });
       window.open(authUrl, "wishd:kh:auth", "width=600,height=720");
       // Phase stays "pending" until postMessage arrives
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : String(err));
+      const msg = err instanceof Error ? err.message : String(err);
+      appendAgentEvent({ kind: "step", label: "kh.auth.start", status: "fail", ms: Math.round(performance.now() - t0) });
+      appendAgentEvent({ kind: "error", message: msg });
+      setErrorMsg(msg);
       setPhase("error");
     }
   }

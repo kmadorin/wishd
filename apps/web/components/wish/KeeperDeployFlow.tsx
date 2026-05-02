@@ -5,6 +5,7 @@ import type { ReactElement } from "react";
 import { useAccount } from "wagmi";
 import { useGrantPermissions } from "porto/wagmi/Hooks";
 import { useKeeperDeploy } from "@/store/keeperDeploy";
+import { useWorkspace } from "@/store/workspace";
 import { clientGetKeeper } from "@/lib/keepers/clientRegistry";
 import { buildPortoGrantPayload } from "@/lib/keepers/buildPortoGrantPayload";
 import type { DelegationProposal } from "@/server/keepers/proposeDelegation";
@@ -19,6 +20,7 @@ export function KeeperDeployFlow(): ReactElement | null {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [proposal, setProposal] = useState<DelegationProposal | null>(null);
   const grant = useGrantPermissions();
+  const appendAgentEvent = useWorkspace((s) => s.appendAgentEvent);
 
   const keeper = useMemo(() => (payload ? clientGetKeeper(payload.offer.keeperId) : null), [payload]);
 
@@ -49,6 +51,8 @@ export function KeeperDeployFlow(): ReactElement | null {
       return;
     }
     setPhase("granting");
+    appendAgentEvent({ kind: "step", label: "porto.grantPermissions", status: "start" });
+    const tGrant = performance.now();
     try {
       const sessionKey = ("0x" + crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "")).slice(0, 42) as Address;
       // TODO(P1+): replace placeholder with Porto-issued session key.
@@ -62,8 +66,11 @@ export function KeeperDeployFlow(): ReactElement | null {
         ...params,
       });
       const permissionsId = result.id as `0x${string}`;
+      appendAgentEvent({ kind: "step", label: "porto.grantPermissions", status: "ok", ms: Math.round(performance.now() - tGrant) });
 
       setPhase("deploying");
+      appendAgentEvent({ kind: "step", label: `kh.deploy ${keeper!.manifest.id}`, status: "start" });
+      const tDeploy = performance.now();
       const res = await fetch("/api/keepers/deploy", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -77,9 +84,12 @@ export function KeeperDeployFlow(): ReactElement | null {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? `deploy failed ${res.status}`);
       }
+      appendAgentEvent({ kind: "step", label: `kh.deploy ${keeper!.manifest.id}`, status: "ok", ms: Math.round(performance.now() - tDeploy) });
       setPhase("confirmed");
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : String(err));
+      const msg = err instanceof Error ? err.message : String(err);
+      appendAgentEvent({ kind: "error", message: msg });
+      setErrorMsg(msg);
       setPhase("error");
     }
   }

@@ -42,6 +42,7 @@ export function StreamBus() {
             appendAgentEvent({ kind: "delta", text: ev.delta });
           }
           if (ev.type === "ui.render") {
+            appendAgentEvent({ kind: "ui.render", widgetType: ev.widget.type, widgetId: ev.widget.id });
             if (skeletonId && !hydrated) {
               hydrated = true;
               hydrateSkeleton(skeletonId, {
@@ -59,8 +60,17 @@ export function StreamBus() {
               });
             }
           }
-          if (ev.type === "ui.patch") patchWidget(ev.id, ev.props);
-          if (ev.type === "ui.dismiss") dismissWidget(ev.id);
+          if (ev.type === "ui.patch") {
+            appendAgentEvent({ kind: "ui.patch", widgetId: ev.id });
+            patchWidget(ev.id, ev.props);
+          }
+          if (ev.type === "ui.dismiss") {
+            appendAgentEvent({ kind: "ui.dismiss", widgetId: ev.id });
+            dismissWidget(ev.id);
+          }
+          if (ev.type === "notification") appendAgentEvent({ kind: "notification", level: ev.level, text: ev.text });
+          if (ev.type === "result") appendAgentEvent({ kind: "result", ok: ev.ok, cost: ev.cost });
+          if (ev.type === "error") appendAgentEvent({ kind: "error", message: ev.message });
         },
       })
         .catch((err) => {
