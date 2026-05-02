@@ -105,8 +105,8 @@ export function KeeperDeployFlow(): ReactElement | null {
           <section className="space-y-3">
             <Block label="this session may call">
               <ul className="text-xs space-y-1">
-                {keeper.delegation.fixed.calls.map((a) => (
-                  <li key={a} className="font-mono">{a}</li>
+                {keeper.delegation.fixed.calls.map((c) => (
+                  <li key={c.to} className="font-mono">{c.to} <span className="text-ink-3">{c.signature}</span></li>
                 ))}
               </ul>
             </Block>
