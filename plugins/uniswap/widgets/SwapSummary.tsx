@@ -69,6 +69,7 @@ export function SwapSummary(props: SwapSummaryProps) {
   const [slippageBps, setSlippageBps] = useState(config.slippageBps);
   const [submitting, setSubmitting] = useState(false);
   const [editPending, setEditPending] = useState(false);
+  const [openPicker, setOpenPicker] = useState<"in" | "out" | null>(null);
 
   const debouncedAmount = useDebounce(amountIn, 300);
   const executing = useWorkspace((s) => s.executing);
@@ -199,6 +200,8 @@ export function SwapSummary(props: SwapSummaryProps) {
                   ariaLabel="select token in"
                   address={swapper}
                   variant="from"
+                  open={openPicker === "in"}
+                  onOpenChange={(o) => setOpenPicker(o ? "in" : null)}
                 />
               </div>
             </div>
@@ -228,6 +231,8 @@ export function SwapSummary(props: SwapSummaryProps) {
                   ariaLabel="select token out"
                   address={swapper}
                   variant="to"
+                  open={openPicker === "out"}
+                  onOpenChange={(o) => setOpenPicker(o ? "out" : null)}
                 />
               </div>
             </div>
