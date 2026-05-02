@@ -25,6 +25,9 @@ importers:
       '@wishd/plugin-compound-v3':
         specifier: workspace:*
         version: link:../../plugins/compound-v3
+      '@wishd/plugin-demo-stubs':
+        specifier: workspace:*
+        version: link:../../plugins/demo-stubs
       '@wishd/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
@@ -205,9 +208,18 @@ importers:
         specifier: ^2.21.0
         version: 2.48.7(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.4.1)
     devDependencies:
+      '@testing-library/jest-dom':
+        specifier: ^6.9.1
+        version: 6.9.1
+      '@testing-library/react':
+        specifier: ^16.3.2
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@types/react':
         specifier: ^19.0.0
         version: 19.2.14
+      jsdom:
+        specifier: ^25.0.0
+        version: 25.0.1(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       typescript:
         specifier: ^5.6.0
         version: 5.9.3
