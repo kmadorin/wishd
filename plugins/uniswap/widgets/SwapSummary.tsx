@@ -347,33 +347,43 @@ export function SwapSummary(props: SwapSummaryProps) {
           <div className="font-mono text-[11px] text-ink-3 px-2">edit pending — re-running checks…</div>
         ) : null}
 
-        {/* Keeper offers */}
-        {keeperOffers.length > 0 && (
-          <div className="border-[1.5px] border-dashed border-ink rounded-2xl bg-bg p-4">
-            <div className="font-mono text-[9px] tracking-[0.12em] uppercase text-ink-3 mb-2">
-              better execution options
-            </div>
-            {keeperOffers.map((offer, i) => (
-              <div
-                key={i}
-                className={[
-                  "flex items-start gap-2 p-2.5 rounded-sm border border-rule mb-1.5 text-sm",
-                  offer.featured ? "bg-accent-2 border-accent" : "bg-surface-2",
-                ].join(" ")}
-              >
-                <div className="flex-1">
-                  <div className="font-semibold text-ink">{offer.title}</div>
-                  <div className="text-xs text-ink-3 mt-0.5">{offer.desc}</div>
-                </div>
-                {offer.featured && (
-                  <span className="font-mono text-[9px] bg-accent border border-ink rounded-sm px-1.5 py-0.5 flex-shrink-0">
-                    featured
-                  </span>
-                )}
+        {/* Keeper offers — only for non-trivial swaps */}
+        {(() => {
+          const a = parseFloat(amountIn);
+          const isStableIn = ["USDC", "USDT", "DAI"].includes(assetIn);
+          const minAmount = isStableIn ? 50 : 0.05;
+          const showOffers = Number.isFinite(a) && a >= minAmount && keeperOffers.length > 0;
+          if (!showOffers) return null;
+          return (
+            <div className="border-[1.5px] border-dashed border-ink rounded-2xl bg-bg p-4">
+              <div className="font-mono text-[9px] tracking-[0.12em] uppercase text-ink-3 mb-2">
+                better execution options
               </div>
-            ))}
-          </div>
-        )}
+              {keeperOffers.map((offer, i) => (
+                <div
+                  key={i}
+                  className={[
+                    "flex items-start gap-2 p-2.5 rounded-sm border border-rule mb-1.5 text-sm",
+                    offer.featured ? "bg-accent-2 border-accent" : "bg-surface-2",
+                  ].join(" ")}
+                >
+                  <div className="flex-1">
+                    <div className="font-semibold text-ink">{offer.title}</div>
+                    <div className="text-xs text-ink-3 mt-0.5">{offer.desc}</div>
+                    {offer.why && (
+                      <div className="text-xs text-ink-2 mt-1 italic">why: {offer.why}</div>
+                    )}
+                  </div>
+                  {offer.featured && (
+                    <span className="font-mono text-[9px] bg-accent border border-ink rounded-sm px-1.5 py-0.5 flex-shrink-0">
+                      featured
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </div>
   );
 }

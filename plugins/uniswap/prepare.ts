@@ -8,10 +8,17 @@ import { erc20Abi } from "./abis/erc20";
 import type { SwapConfig, SwapPrepared, KeeperOffer, SwapQuote, Call } from "./types";
 
 const STATIC_KEEPER_OFFERS: KeeperOffer[] = [
-  { title: "Earn on idle tokens",     desc: "Auto-deposit received tokens into best APY protocol.", featured: true },
-  { title: "Range alert",             desc: "Notify if price moves ±15% — chance to swap back at better rate." },
-  { title: "DCA back",                desc: "Drip tokens back at intervals until target allocation reached." },
-  { title: "Liquidation protection",  desc: "Auto-repay borrow if health factor drops below 1.3." },
+  {
+    title: "Earn on idle tokens",
+    desc: "Auto-deposit received tokens into best APY protocol.",
+    why: "Your received tokens sit idle in the wallet — auto-supply on Compound earns ~3% APY without further clicks.",
+    featured: true,
+  },
+  {
+    title: "Range alert",
+    desc: "Notify if price moves ±15% — chance to swap back at better rate.",
+    why: "Volatile pair: a swing the other way is a free re-entry; we'll ping you so you don't have to watch the chart.",
+  },
 ];
 
 export type StrategyApi = {

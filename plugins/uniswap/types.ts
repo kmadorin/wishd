@@ -27,7 +27,7 @@ export type SwapQuote = {
   raw: unknown;
 };
 
-export type KeeperOffer = { title: string; desc: string; featured?: boolean };
+export type KeeperOffer = { title: string; desc: string; why?: string; featured?: boolean };
 
 export type SwapPrepared = {
   config: SwapConfig;
