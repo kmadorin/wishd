@@ -300,7 +300,7 @@ function SpendCapInput(props: {
     if (firstDot !== -1) {
       s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, "");
       // Truncate fractional portion to `decimals` digits.
-      const [intPart, fracPart = ""] = s.split(".");
+      const [intPart = "", fracPart = ""] = s.split(".");
       s = intPart + "." + fracPart.slice(0, decimals);
       if (s.endsWith(".") && fracPart.length === 0 && decimals === 0) {
         s = intPart;

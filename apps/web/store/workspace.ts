@@ -27,6 +27,8 @@ export type AgentEvent =
   | { kind: "error"; message: string; at: number }
   | { kind: "step"; label: string; status: "start" | "ok" | "fail"; ms?: number; at: number };
 
+type AgentEventInput = AgentEvent extends infer T ? (T extends AgentEvent ? Omit<T, "at"> : never) : never;
+
 type State = {
   widgets: WidgetInstance[];
   narration: string;
@@ -40,7 +42,7 @@ type State = {
   hydrateSkeleton: (id: string, replacement: Omit<WidgetInstance, "createdAt">) => void;
   failSkeleton: (id: string, message: string) => void;
   appendNarration: (delta: string) => void;
-  appendAgentEvent: (e: Omit<AgentEvent, "at">) => void;
+  appendAgentEvent: (e: AgentEventInput) => void;
   clearAgentActivity: () => void;
   reset: () => void;
 };
