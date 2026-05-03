@@ -6,7 +6,7 @@ Status: Design approved, awaiting implementation plan
 ## Goal
 
 Deploy wishd (Next.js) and keeperhub (Next.js + Postgres) to a single
-Hetzner VPS, served over HTTPS at `app.simula.online` and
+Hetzner VPS, served over HTTPS at `wishd.simula.online` and
 `kh.simula.online`. Minimal moving parts. Lifetime: live demo / portfolio
 (weeks-to-months), single user load, ongoing iteration.
 
@@ -32,7 +32,7 @@ Single Hetzner CX22 (Falkenstein, DE), Ubuntu 24.04 LTS.
                 │   Caddy     │  :80/:443  (auto-TLS Let's Encrypt)
                 │ (host pkg)  │
                 └──┬──────┬───┘
-   app.simula.online│      │kh.simula.online
+   wishd.simula.online│      │kh.simula.online
         ┌──────────▼┐    ┌▼────────────┐
         │ wishd-web │    │ keeperhub   │   (Docker, simula-net)
         │ next start│    │ next start  │
@@ -77,9 +77,9 @@ swap file (`fallocate -l 4G /swapfile`). If chronic OOM, upgrade to CX32
 In simula.online registrar, add:
 
 ```
-A    app.simula.online   → <hetzner-ipv4>
+A    wishd.simula.online   → <hetzner-ipv4>
 A    kh.simula.online    → <hetzner-ipv4>
-AAAA app.simula.online   → <hetzner-ipv6>   (optional)
+AAAA wishd.simula.online   → <hetzner-ipv6>   (optional)
 AAAA kh.simula.online    → <hetzner-ipv6>   (optional)
 ```
 
@@ -88,7 +88,7 @@ AAAA kh.simula.online    → <hetzner-ipv6>   (optional)
 `/etc/caddy/Caddyfile`:
 
 ```caddy
-app.simula.online {
+wishd.simula.online {
     reverse_proxy 127.0.0.1:3001
     encode zstd gzip
 }
@@ -254,7 +254,7 @@ ANTHROPIC_API_KEY=<your key>
 KH_BASE_URL=http://keeperhub:3000
 NEXT_PUBLIC_KH_BASE_URL=https://kh.simula.online
 KH_ACCESS_TOKEN=<same value as KEEPERHUB_API_KEY>
-WISHD_APP_URL=https://app.simula.online
+WISHD_APP_URL=https://wishd.simula.online
 UNISWAP_API_KEY=<your key>
 RPC_URL_1=...
 RPC_URL_8453=...
@@ -273,7 +273,7 @@ NODE_ENV=production
 
 Per Q4 = yes. Wishd's `apps/web/server/keepers/khOAuth.ts` flow needs:
 
-- KH side: register redirect URI `https://app.simula.online/api/keepers/kh-callback`
+- KH side: register redirect URI `https://wishd.simula.online/api/keepers/kh-callback`
   in whatever KH config governs allowed callbacks (TBD: locate the
   setting in keeperhub repo during implementation; likely
   `BETTER_AUTH_URL` plus an allowlist or a per-client config).
@@ -360,7 +360,7 @@ ufw enable
 - Docker `json-file` driver capped at 30 MB per service (3 × 10 MB).
 - No Sentry (per Q7).
 - Optional: UptimeRobot free pinging `https://kh.simula.online/api/health`
-  and `https://app.simula.online`. Out of scope for v1.
+  and `https://wishd.simula.online`. Out of scope for v1.
 
 ## Risks
 
