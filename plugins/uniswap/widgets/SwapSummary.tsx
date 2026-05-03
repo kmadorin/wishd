@@ -114,7 +114,15 @@ export function SwapSummary(props: SwapSummaryProps) {
   });
 
   const quote = quoteQuery.data ?? initialQuote;
-  const insufficient = props.insufficient && amountIn === config.amountIn;
+  // Recompute insufficient from live balance + amount; the server-prepared
+  // props.insufficient is keyed to the initial (assetIn, amountIn) pair and
+  // becomes stale after any local edit (token flip, amount change).
+  const insufficient = (() => {
+    const b = parseFloat(balance);
+    const a = parseFloat(amountIn);
+    if (!Number.isFinite(b) || !Number.isFinite(a)) return false;
+    return a > b;
+  })();
   const ctaDisabled = submitting || executing || insufficient || !quoteQuery.data || !!quoteQuery.error;
 
   function setAssetInGuarded(next: string) {
@@ -150,11 +158,21 @@ export function SwapSummary(props: SwapSummaryProps) {
           context: {
             summaryId,
             prepared: {
-              ...config,
-              ...quoteQuery.data,
+              config: {
+                ...config,
+                assetIn,
+                assetOut,
+                amountIn: amountIn,
+                slippageBps,
+              },
+              initialQuote: quoteQuery.data ?? initialQuote,
+              initialQuoteAt: Date.now(),
               approvalCall,
               balance,
+              insufficient,
+              liquidityNote: props.liquidityNote,
               keeperOffers,
+              summaryId,
             },
           },
         },
@@ -197,7 +215,6 @@ export function SwapSummary(props: SwapSummaryProps) {
                   chainId={chainId}
                   value={assetIn}
                   onChange={setAssetInGuarded}
-                  ariaLabel="select token in"
                   address={swapper}
                   variant="from"
                   open={openPicker === "in"}
@@ -228,7 +245,6 @@ export function SwapSummary(props: SwapSummaryProps) {
                   chainId={chainId}
                   value={assetOut}
                   onChange={setAssetOutGuarded}
-                  ariaLabel="select token out"
                   address={swapper}
                   variant="to"
                   open={openPicker === "out"}

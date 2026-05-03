@@ -466,7 +466,6 @@ function FieldPill({
         chainId={chainId ?? 11155111}
         value={value}
         onChange={onChange}
-        ariaLabel={ariaLabelForField(field)}
         address={address}
         open={open}
         onOpenChange={onOpenChange}
