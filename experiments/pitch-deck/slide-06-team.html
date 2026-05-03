@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>wishd — slide 6</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .s6 .body { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; place-items: center; height: 760px; }
+    .s6 .member { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+    .s6 .member .avatar {
+      width: 220px; height: 220px; border-radius: 50%;
+      background: var(--surface); border: 2px solid var(--ink);
+      display: grid; place-items: center;
+      font-family: 'Caveat', cursive; font-weight: 700; font-size: 96px; color: var(--accent);
+      box-shadow: 0 8px 24px var(--shadow);
+    }
+    .s6 .member h2 { font-size: 36px; font-weight: 700; margin: 0; }
+    .s6 .member .role { font-size: 22px; color: var(--ink-2); }
+  </style>
+</head>
+<body>
+  <section class="slide s6">
+    <header class="slide-header">
+      <span class="wordmark">wishd</span>
+      <span class="pageno">6 / 7 — team</span>
+    </header>
+    <h1 class="slide-title">Team.</h1>
+    <div class="body">
+      <div class="member">
+        <div class="avatar">KM</div>
+        <h2>Kirill Madorin</h2>
+        <div class="role">design · code · everything</div>
+      </div>
+      <div class="member">
+        <div class="avatar">CC</div>
+        <h2>Claude Code</h2>
+        <div class="role">w/ superpowers plugin</div>
+      </div>
+    </div>
+  </section>
+</body>
+</html>
