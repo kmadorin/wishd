@@ -45,8 +45,17 @@ export function KeeperDeployFlow(): ReactElement | null {
     }
     if (!keeper) return;
     if (keeper.delegation.kind !== "porto-permissions") return;
+    const fromPayload = payload?.suggestedDelegation
+      ? {
+          ...payload.suggestedDelegation,
+          spend: payload.suggestedDelegation.spend.map((s) => ({
+            ...s,
+            limit: typeof s.limit === "bigint" ? s.limit : BigInt(s.limit as unknown as string | number),
+          })),
+        }
+      : null;
     setProposal(
-      payload?.suggestedDelegation ?? {
+      fromPayload ?? {
         expiry: keeper.delegation.expiryPolicy,
         spend: keeper.delegation.spend.defaults.map((d) => ({ token: d.token, limit: d.limit, period: d.period })),
       },
