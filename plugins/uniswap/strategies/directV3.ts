@@ -6,7 +6,7 @@ import { quoterV2Abi } from "../abis/quoterV2";
 import { swapRouter02Abi } from "../abis/swapRouter02";
 import { erc20Abi } from "../abis/erc20";
 import { resolveAsset } from "../resolveAsset";
-import type { Call, SwapConfig, SwapQuote } from "../types";
+import type { StrategyCall, SwapConfig, SwapQuote } from "../types";
 import { SwapError } from "../types";
 
 const ETH = "0x0000000000000000000000000000000000000000" as Hex;
@@ -62,7 +62,7 @@ export function directV3Strategy(opts: { publicClient: Pick<PublicClient, "simul
     };
   }
 
-  async function checkApproval(input: { chainId: number; walletAddress: Hex; token: Hex; amountWei: string }): Promise<{ approvalCall: Call | null }> {
+  async function checkApproval(input: { chainId: number; walletAddress: Hex; token: Hex; amountWei: string }): Promise<{ approvalCall: StrategyCall | null }> {
     if (input.token.toLowerCase() === ETH) return { approvalCall: null };
     const c = chain(input.chainId);
     const allowance = await pc.readContract({ address: input.token, abi: erc20Abi, functionName: "allowance", args: [input.walletAddress, c.swapRouter02] }) as bigint;
@@ -70,7 +70,7 @@ export function directV3Strategy(opts: { publicClient: Pick<PublicClient, "simul
     return { approvalCall: { to: input.token, data: encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [c.swapRouter02, maxUint256] }), value: "0x0" as Hex } };
   }
 
-  async function swap(input: { config: SwapConfig; quote: SwapQuote }): Promise<{ swapCall: Call; approvalStillRequired: boolean }> {
+  async function swap(input: { config: SwapConfig; quote: SwapQuote }): Promise<{ swapCall: StrategyCall; approvalStillRequired: boolean }> {
     const cfg = input.config;
     const raw = input.quote.raw as { fee: number; amountInWei: string; amountOutMin: string; wrapEthIn: boolean; unwrapWethOut: boolean };
     const c = chain(cfg.chainId);
@@ -88,7 +88,7 @@ export function directV3Strategy(opts: { publicClient: Pick<PublicClient, "simul
     const data = encodeFunctionData({ abi: swapRouter02Abi, functionName: "multicall", args: [inner] });
     const value = (raw.wrapEthIn ? `0x${BigInt(raw.amountInWei).toString(16)}` : "0x0") as Hex;
 
-    const swapCall: Call = { to: c.swapRouter02, data, value };
+    const swapCall: StrategyCall = { to: c.swapRouter02, data, value };
     const ap = await checkApproval({ chainId: cfg.chainId, walletAddress: cfg.swapper, token: cfg.tokenIn, amountWei: raw.amountInWei });
     return { swapCall, approvalStillRequired: ap.approvalCall !== null };
   }

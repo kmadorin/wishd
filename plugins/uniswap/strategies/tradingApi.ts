@@ -1,6 +1,6 @@
 // plugins/uniswap/strategies/tradingApi.ts
 import type { Hex } from "viem";
-import type { SwapConfig, SwapQuote, Call } from "../types";
+import type { SwapConfig, SwapQuote, StrategyCall } from "../types";
 import { SwapError } from "../types";
 import { fetchWithRetry, type RetryOpts } from "./fetchWithRetry";
 import { validateCall, ensureHexValue } from "./validateCall";
@@ -19,7 +19,7 @@ export function tradingApiStrategy(opts: TradingApiOpts) {
   const post = (path: string, body: unknown) =>
     fetchWithRetry(`${BASE}${path}`, { method: "POST", headers, body: JSON.stringify(body) }, { ...opts.retry, fetchImpl: opts.fetchImpl });
 
-  async function checkApproval(input: { chainId: number; walletAddress: Hex; token: Hex; amountWei: string }): Promise<{ approvalCall: Call | null }> {
+  async function checkApproval(input: { chainId: number; walletAddress: Hex; token: Hex; amountWei: string }): Promise<{ approvalCall: StrategyCall | null }> {
     if (input.token.toLowerCase() === ETH) return { approvalCall: null };
     const r = await post("/check_approval", {
       walletAddress: input.walletAddress,
@@ -29,7 +29,7 @@ export function tradingApiStrategy(opts: TradingApiOpts) {
     });
     const j = await r.json() as { approval: { to: Hex; data: Hex; value?: Hex } | null };
     if (!j.approval) return { approvalCall: null };
-    const call: Call = { to: j.approval.to, data: j.approval.data, value: ensureHexValue(j.approval.value ?? "0x0") };
+    const call: StrategyCall = { to: j.approval.to, data: j.approval.data, value: ensureHexValue(j.approval.value ?? "0x0") };
     validateCall(call, "approvalCall");
     return { approvalCall: call };
   }
@@ -66,11 +66,11 @@ export function tradingApiStrategy(opts: TradingApiOpts) {
     };
   }
 
-  async function swap(input: { config: SwapConfig; quote: SwapQuote }): Promise<{ swapCall: Call; approvalStillRequired: boolean }> {
+  async function swap(input: { config: SwapConfig; quote: SwapQuote }): Promise<{ swapCall: StrategyCall; approvalStillRequired: boolean }> {
     const { permitData: _pd, permitTransaction: _pt, ...cleanQuote } = (input.quote.raw as Record<string, unknown>) ?? {};
     const r = await post("/swap", cleanQuote);
     const j = await r.json() as { swap: { to: Hex; data: Hex; value?: Hex; from?: Hex } };
-    const call: Call = { to: j.swap.to, data: j.swap.data, value: ensureHexValue(j.swap.value ?? "0x0") };
+    const call: StrategyCall = { to: j.swap.to, data: j.swap.data, value: ensureHexValue(j.swap.value ?? "0x0") };
     validateCall(call, "swapCall");
     const approvalCheck = await checkApproval({
       chainId: input.config.chainId,

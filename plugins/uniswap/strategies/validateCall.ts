@@ -1,11 +1,11 @@
 // plugins/uniswap/strategies/validateCall.ts
 import type { Hex } from "viem";
-import type { Call } from "../types";
+import type { StrategyCall } from "../types";
 
 const ADDR = /^0x[a-fA-F0-9]{40}$/;
 const HEX  = /^0x[a-fA-F0-9]+$/;
 
-export function validateCall(c: Partial<Call> | undefined, label: string): asserts c is Call {
+export function validateCall(c: Partial<StrategyCall> | undefined, label: string): asserts c is StrategyCall {
   if (!c) throw new Error(`${label}: missing`);
   if (!c.to || !ADDR.test(c.to)) throw new Error(`${label}: bad to`);
   if (!c.data || !HEX.test(c.data) || c.data === "0x") throw new Error(`${label}: empty calldata`);
