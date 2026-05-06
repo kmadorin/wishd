@@ -5,7 +5,7 @@ import type { Plugin, Keeper, Address, IntentField, IntentSchema } from "./index
 describe("plugin-sdk", () => {
   it("definePlugin returns input unchanged", () => {
     const stub: Plugin = {
-      manifest: { name: "x", version: "0", chains: [1], trust: "verified", provides: { intents: [], widgets: [], mcps: [] } },
+      manifest: { name: "x", version: "0", chains: ["eip155:1"], trust: "verified", provides: { intents: [], widgets: [], mcps: [] } },
       mcp: () => ({ server: {} as never, serverName: "x" }),
       widgets: {},
     };
@@ -49,7 +49,7 @@ describe("plugin-sdk", () => {
       slot: "flow",
     };
     const stub: Plugin = {
-      manifest: { name: "x", version: "0", chains: [1], trust: "verified", provides: { intents: [], widgets: [], mcps: [] } },
+      manifest: { name: "x", version: "0", chains: ["eip155:1"], trust: "verified", provides: { intents: [], widgets: [], mcps: [] } },
       mcp: () => ({ server: {} as never, serverName: "x" }),
       widgets: {},
       intents: [schema],
@@ -87,7 +87,7 @@ describe("IntentField select variant", () => {
       fields: [f],
       widget: "w",
     };
-    expect(s.fields[0].type).toBe("select");
+    expect(s.fields[0]!.type).toBe("select");
   });
 });
 

@@ -28,7 +28,7 @@ export async function runAgent(input: RunAgentInput): Promise<void> {
   const { plugins, allowedTools } = await loadPlugins();
   const intents = await listIntents();
 
-  const pluginCtx = { publicClient, emit };
+  const pluginCtx = { family: "evm" as const, publicClient, emit };
   const pluginMcps = plugins.map((p) => p.mcp(pluginCtx));
   const widgetMcp = createWidgetRendererMcp(emit);
 

@@ -26,6 +26,7 @@ describe("prepareSwap", () => {
     expect(out.config.strategyTag).toBe("trading-api");
     expect(out.insufficient).toBe(false);
     expect(out.keeperOffers.length).toBeGreaterThan(0);
+    expect(Array.isArray(out.calls)).toBe(true);
   });
 
   it("dispatches to directV3 for sepolia + sets liquidityNote", async () => {

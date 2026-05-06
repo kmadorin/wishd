@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { compoundIntents } from "./intents";
+import { EIP155 } from "@wishd/plugin-sdk";
 
 describe("compound-v3 intents", () => {
   it("exports deposit, withdraw, and lend intents", () => {
@@ -21,7 +22,7 @@ describe("compound-v3 intents", () => {
       if (asset.type === "asset") expect(asset.options).toEqual(["USDC"]);
       const chain = i.fields.find((f) => f.key === "chain")!;
       expect(chain.type).toBe("chain");
-      if (chain.type === "chain") expect(chain.options).toEqual(["ethereum-sepolia"]);
+      if (chain.type === "chain") expect(chain.options).toEqual([EIP155(11155111)]);
     }
   });
 

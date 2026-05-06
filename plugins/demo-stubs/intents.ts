@@ -1,6 +1,13 @@
-import type { IntentSchema } from "@wishd/plugin-sdk";
+import { type IntentSchema, EIP155 } from "@wishd/plugin-sdk";
 
-const chainOptions = ["ethereum-sepolia", "ethereum", "base", "arbitrum", "optimism", "polygon"];
+const chainOptions = [
+  EIP155(11155111), // ethereum-sepolia
+  EIP155(1),        // ethereum
+  EIP155(8453),     // base
+  EIP155(42161),    // arbitrum
+  EIP155(10),       // optimism
+  EIP155(137),      // polygon
+];
 
 export const demoIntents: IntentSchema[] = [
   {
@@ -12,7 +19,7 @@ export const demoIntents: IntentSchema[] = [
       { key: "asset", type: "asset", required: true, default: "ETH", options: ["ETH", "USDC", "WBTC"] },
       { key: "collateral", type: "asset", required: true, default: "USDC", options: ["USDC", "ETH", "DAI"] },
       { key: "protocol", type: "select", required: true, default: "aave-v3", options: ["aave-v3", "compound-v3", "euler", "morpho"] },
-      { key: "chain", type: "chain", required: true, default: "ethereum-sepolia", options: chainOptions },
+      { key: "chain", type: "chain", required: true, default: EIP155(11155111), options: chainOptions },
     ],
     connectors: { collateral: "against", protocol: "on", chain: "·" },
     widget: "borrow-demo",
@@ -25,7 +32,7 @@ export const demoIntents: IntentSchema[] = [
     fields: [
       { key: "amount", type: "amount", required: true, default: "100" },
       { key: "asset", type: "asset", required: true, default: "USDC", options: ["USDC", "DAI", "ETH"] },
-      { key: "chain", type: "chain", required: true, default: "ethereum-sepolia", options: chainOptions },
+      { key: "chain", type: "chain", required: true, default: EIP155(11155111), options: chainOptions },
     ],
     connectors: { chain: "on" },
     widget: "earn-demo",
@@ -38,8 +45,8 @@ export const demoIntents: IntentSchema[] = [
     fields: [
       { key: "amount", type: "amount", required: true, default: "0.05" },
       { key: "asset", type: "asset", required: true, default: "ETH", options: ["ETH", "USDC", "WBTC"] },
-      { key: "fromChain", type: "chain", required: true, default: "ethereum", options: chainOptions },
-      { key: "toChain", type: "chain", required: true, default: "base", options: chainOptions },
+      { key: "fromChain", type: "chain", required: true, default: EIP155(1), options: chainOptions },
+      { key: "toChain", type: "chain", required: true, default: EIP155(8453), options: chainOptions },
     ],
     connectors: { fromChain: "from", toChain: "to" },
     widget: "bridge-demo",
@@ -51,7 +58,7 @@ export const demoIntents: IntentSchema[] = [
     description: "best risk-adjusted yield",
     fields: [
       { key: "asset", type: "asset", required: true, default: "USDC", options: ["USDC", "DAI", "ETH"] },
-      { key: "chain", type: "chain", required: true, default: "ethereum-sepolia", options: chainOptions },
+      { key: "chain", type: "chain", required: true, default: EIP155(11155111), options: chainOptions },
     ],
     connectors: { chain: "on" },
     widget: "earn-demo",

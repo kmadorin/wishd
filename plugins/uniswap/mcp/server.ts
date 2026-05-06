@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
-import type { PluginCtx } from "@wishd/plugin-sdk";
+import { isEvmCtx, type PluginCtx } from "@wishd/plugin-sdk";
 import { prepareSwap } from "../prepare";
 import { uniswapStrategies, publicClientFor } from "../../../apps/web/server/uniswapClients";
 import { CHAIN_ID_BY_SLUG } from "../intents";
@@ -11,20 +11,21 @@ const inputSchema = {
   amount:      z.string().regex(/^[0-9]+(?:\.[0-9]+)?$/).describe("Decimal amount, e.g. '0.1'"),
   assetIn:     z.string().describe("Source token symbol (e.g. ETH, USDC)"),
   assetOut:    z.string().describe("Destination token symbol"),
-  chain:       z.string().describe("Chain slug (ethereum-sepolia, base, ...)"),
+  chain:       z.string().describe("Chain slug or CAIP-2 (ethereum-sepolia, base, eip155:8453, ...)"),
   user:        z.string().regex(ADDR).describe("Swapper EOA / smart-account address"),
   chainId:     z.coerce.number().int().describe("Chain id (e.g. 8453 for Base)"),
   slippageBps: z.number().optional().default(50),
 };
 
-export function createUniswapMcp(_ctx: PluginCtx) {
+export function createUniswapMcp(ctx: PluginCtx) {
+  if (!isEvmCtx(ctx)) throw new Error("uniswap requires an EVM ctx");
   return createSdkMcpServer({
     name: "uniswap",
     version: "0.0.0",
     tools: [
       tool(
         "prepare_swap",
-        "Prepare a Uniswap swap. Returns SwapPrepared (config, initialQuote, approvalCall, balance, insufficient, keeperOffers).",
+        "Prepare a Uniswap swap. Returns SwapPrepared (config, initialQuote, calls, approvalCall, balance, insufficient, keeperOffers).",
         inputSchema,
         async (args) => {
           const chainId = args.chainId ?? CHAIN_ID_BY_SLUG[args.chain]!;

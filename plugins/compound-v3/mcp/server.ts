@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { PluginCtx } from "@wishd/plugin-sdk";
+import { isEvmCtx, type PluginCtx } from "@wishd/plugin-sdk";
 import { prepareDeposit, prepareWithdraw } from "../prepare";
 import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 
@@ -13,6 +13,7 @@ const inputSchema = {
 };
 
 export function createCompoundMcp(ctx: PluginCtx) {
+  if (!isEvmCtx(ctx)) throw new Error("compound-v3 requires an EVM ctx");
   return createSdkMcpServer({
     name: "compound",
     version: "0.0.0",

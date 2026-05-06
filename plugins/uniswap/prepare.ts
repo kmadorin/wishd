@@ -1,11 +1,12 @@
 // plugins/uniswap/prepare.ts
 import type { Hex, PublicClient } from "viem";
 import { parseUnits, formatUnits } from "viem";
+import { EIP155 } from "@wishd/plugin-sdk";
 import { TRADING_API_CHAINS } from "./addresses";
-import { CHAIN_ID_BY_SLUG, validateSwapValues } from "./intents";
+import { CHAIN_ID_BY_SLUG, CAIP2_BY_SLUG, validateSwapValues } from "./intents";
 import { resolveAsset } from "./resolveAsset";
 import { erc20Abi } from "./abis/erc20";
-import type { SwapConfig, SwapPrepared, KeeperOffer, SwapQuote, Call } from "./types";
+import type { SwapConfig, SwapPrepared, KeeperOffer, SwapQuote, Call, StrategyCall } from "./types";
 
 const STATIC_KEEPER_OFFERS: KeeperOffer[] = [
   { title: "Earn on idle tokens",     desc: "Auto-deposit received tokens into best APY protocol.", featured: true },
@@ -14,10 +15,22 @@ const STATIC_KEEPER_OFFERS: KeeperOffer[] = [
   { title: "Liquidation protection",  desc: "Auto-repay borrow if health factor drops below 1.3." },
 ];
 
+
+/** Convert a strategy-internal Call (value: Hex) to EvmCall (value: bigint) */
+function toEvmCall(chainId: number, c: StrategyCall): Call {
+  return {
+    family: "evm",
+    caip2: EIP155(chainId),
+    to: c.to,
+    data: c.data,
+    value: BigInt(c.value),
+  };
+}
+
 export type StrategyApi = {
   quote: (cfg: SwapConfig) => Promise<SwapQuote>;
-  checkApproval: (i: { chainId: number; walletAddress: Hex; token: Hex; amountWei: string }) => Promise<{ approvalCall: Call | null }>;
-  swap: (i: { config: SwapConfig; quote: SwapQuote }) => Promise<{ swapCall: Call; approvalStillRequired: boolean }>;
+  checkApproval: (i: { chainId: number; walletAddress: Hex; token: Hex; amountWei: string }) => Promise<{ approvalCall: StrategyCall | null }>;
+  swap:  (i: { config: SwapConfig; quote: SwapQuote }) => Promise<{ swapCall: StrategyCall; approvalStillRequired: boolean }>;
 };
 
 export type Strategies = { tradingApi: StrategyApi; directV3: StrategyApi };
@@ -30,9 +43,19 @@ export type PrepareInput = {
   publicClient: Pick<PublicClient, "getBalance" | "readContract">;
 };
 
+/** Resolve chain slug or CAIP-2 string to a numeric chainId */
+function resolveChainId(chain: string): number {
+  // slug path
+  if (CHAIN_ID_BY_SLUG[chain]) return CHAIN_ID_BY_SLUG[chain]!;
+  // CAIP-2 path: find slug whose CAIP-2 matches
+  const slug = Object.entries(CAIP2_BY_SLUG).find(([, c]) => c === chain)?.[0];
+  if (slug) return CHAIN_ID_BY_SLUG[slug]!;
+  throw new Error(`unsupported chain: ${chain}`);
+}
+
 export async function prepareSwap(input: PrepareInput): Promise<SwapPrepared> {
   validateSwapValues(input.values);
-  const chainId = CHAIN_ID_BY_SLUG[input.values.chain]!;
+  const chainId = resolveChainId(input.values.chain);
   const aIn  = resolveAsset(chainId, input.values.assetIn);
   const aOut = resolveAsset(chainId, input.values.assetOut);
 
@@ -65,14 +88,21 @@ export async function prepareSwap(input: PrepareInput): Promise<SwapPrepared> {
   const balance = formatUnits(balanceWei as bigint, aIn.decimals);
   const insufficient = (balanceWei as bigint) < amountInWei;
 
+  // Convert strategy approvalCall (Hex value) → EvmCall (bigint value)
+  const evmApprovalCall: Call | null = approval.approvalCall
+    ? toEvmCall(chainId, approval.approvalCall)
+    : null;
+
   return {
+    calls: [evmApprovalCall].filter((c): c is Call => c !== null),
     config,
     initialQuote: quote,
     initialQuoteAt: Date.now(),
-    approvalCall: approval.approvalCall,
+    // keep approvalCall field for back-compat (intentDispatch.ts reads it directly)
+    approvalCall: evmApprovalCall,
     balance,
     insufficient,
     liquidityNote: chainId === 11155111 ? "Sepolia liquidity is sparse — preview only, this may revert on execute." : undefined,
     keeperOffers: STATIC_KEEPER_OFFERS,
-  };
+  } satisfies SwapPrepared;
 }

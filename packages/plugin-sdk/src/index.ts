@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
-import type { Address, PublicClient } from "viem";
+import type { Address } from "viem";
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import type { PluginCtx } from "./ctx";
 
 export { renderSentenceParts } from "./sentence";
 export type { SentencePart } from "./sentence";
@@ -11,8 +12,8 @@ export type WidgetSlot = "flow" | "results" | "pinned" | "panel";
 
 export type IntentField =
   | { key: string; type: "amount"; required?: boolean; default?: string }
-  | { key: string; type: "asset"; required?: boolean; default?: string; options: string[] }
-  | { key: string; type: "chain"; required?: boolean; default: string; options: string[] }
+  | { key: string; type: "asset"; required?: boolean; default?: string; options: string[] /* CAIP-19 ids */ }
+  | { key: string; type: "chain"; required?: boolean; default: string; options: string[] /* CAIP-2 ids */ }
   | { key: string; type: "select"; required?: boolean; default: string; options: string[] };
 
 export type IntentSchema = {
@@ -31,8 +32,15 @@ export type IntentSchema = {
 export type Manifest = {
   name: string;
   version: string;
-  chains: number[];
+  chains: string[];          // CAIP-2 list (was number[])
   trust: TrustTier;
+  /**
+   * Optional. For plugins with multiple `chain`-typed IntentFields,
+   * names the field whose CAIP-2 value drives ctx selection + disambiguation.
+   * Default fallbacks (in order): single chain field → that one;
+   * field named "fromChain" | "sourceChain" | "chain"; first chain field.
+   */
+  primaryChainField?: string;
   provides: {
     intents: string[];
     widgets: string[];
@@ -143,13 +151,29 @@ export type ServerEvent =
   | { type: "ui.patch"; id: string; props: Record<string, unknown> }
   | { type: "ui.dismiss"; id: string }
   | { type: "notification"; level: "info" | "warn" | "error"; text: string }
-  | { type: "result"; ok: boolean; cost?: number }
+  | {
+    type: "result";
+    ok: boolean;
+    cost?: number;
+    summary?: string;
+    artifacts?: Array<{ kind: "tx"; caip2: string; hash: string }>;
+    recovery?: { kind: "link"; url: string; label: string };
+  }
   | { type: "error"; message: string };
 
-export type PluginCtx = {
-  publicClient: PublicClient;
-  emit: (e: ServerEvent) => void;
-};
+export type { Call, EvmCall, SvmCall, SvmTxCall, SvmInstructionsCall } from "./call";
+export {
+  isEvmCall, isSvmCall, isSvmTxCall, isSvmInstructionsCall,
+} from "./call";
+
+export type { PluginCtx, EvmCtx, SvmCtx, Emit, SolanaRpcLike } from "./ctx";
+export { isEvmCtx, isSvmCtx } from "./ctx";
+
+export type { Prepared } from "./prepared";
+export type { Observation, LifiStatusObservation, Placeholder } from "./observation";
+export { isPlaceholder } from "./observation";
+
+export * from "./caip";
 
 export type Plugin = {
   manifest: Manifest;
