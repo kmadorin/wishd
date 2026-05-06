@@ -1,31 +1,59 @@
 import { encodeFunctionData, formatUnits, maxUint256, toHex, type Address, type PublicClient } from "viem";
 import { parseUnits } from "viem";
+import { EIP155 } from "@wishd/plugin-sdk";
+import type { EvmCall, Prepared } from "@wishd/plugin-sdk";
 import { COMPOUND_ADDRESSES, SUPPORTED_CHAINS } from "./addresses";
 import { erc20Abi } from "./abis/erc20";
 import { cometAbi } from "./abis/comet";
 
 const USDC_DECIMALS = 6;
+const COMPOUND_CHAIN_ID = 11155111 as const;
 
-export type PreparedCall = {
-  to: Address;
-  data: `0x${string}`;
-  value: `0x${string}`;
-};
-
-export type PreparedDeposit = {
-  calls: PreparedCall[];
-  meta: {
-    needsApprove: boolean;
-    amountWei: `0x${string}`;
-    asset: "USDC";
-    market: "cUSDCv3";
-    chainId: number;
-    user: Address;
-    balanceWei: `0x${string}`;
-    balance: string;
-    insufficient: boolean;
+/** Tagged EVM call for Compound — value is bigint per EvmCall spec. */
+function evmCall(to: Address, data: `0x${string}`): EvmCall {
+  return {
+    family: "evm",
+    caip2: EIP155(COMPOUND_CHAIN_ID),
+    to,
+    data,
+    value: 0n,
   };
+}
+
+export type DepositMeta = {
+  needsApprove: boolean;
+  amountWei: `0x${string}`;
+  asset: "USDC";
+  market: "cUSDCv3";
+  chainId: number;
+  user: Address;
+  balanceWei: `0x${string}`;
+  balance: string;
+  insufficient: boolean;
 };
+
+export type CompoundDepositExtras = {
+  meta: DepositMeta;
+};
+
+export type PreparedDeposit = Prepared<CompoundDepositExtras>;
+
+export type WithdrawMeta = {
+  amountWei: `0x${string}`;
+  asset: "USDC";
+  market: "cUSDCv3";
+  chainId: number;
+  user: Address;
+  suppliedWei: `0x${string}`;
+  supplied: string;
+  insufficient: boolean;
+};
+
+export type CompoundWithdrawExtras = {
+  meta: WithdrawMeta;
+};
+
+export type PreparedWithdraw = Prepared<CompoundWithdrawExtras>;
 
 export type PrepareDepositInput = {
   amount: string;
@@ -62,29 +90,19 @@ export async function prepareDeposit(input: PrepareDepositInput): Promise<Prepar
   const needsApprove = allowance < amountWei;
   const insufficient = balance < amountWei;
 
-  const calls: PreparedCall[] = [];
+  const calls: EvmCall[] = [];
 
   if (needsApprove) {
-    calls.push({
-      to: addrs.USDC,
-      data: encodeFunctionData({
-        abi: erc20Abi,
-        functionName: "approve",
-        args: [addrs.Comet, maxUint256],
-      }),
-      value: "0x0",
-    });
+    calls.push(evmCall(
+      addrs.USDC,
+      encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [addrs.Comet, maxUint256] }),
+    ));
   }
 
-  calls.push({
-    to: addrs.Comet,
-    data: encodeFunctionData({
-      abi: cometAbi,
-      functionName: "supply",
-      args: [addrs.USDC, amountWei],
-    }),
-    value: "0x0",
-  });
+  calls.push(evmCall(
+    addrs.Comet,
+    encodeFunctionData({ abi: cometAbi, functionName: "supply", args: [addrs.USDC, amountWei] }),
+  ));
 
   return {
     calls,
@@ -99,22 +117,8 @@ export async function prepareDeposit(input: PrepareDepositInput): Promise<Prepar
       balance: formatUnits(balance, USDC_DECIMALS),
       insufficient,
     },
-  };
+  } satisfies PreparedDeposit;
 }
-
-export type PreparedWithdraw = {
-  calls: PreparedCall[];
-  meta: {
-    amountWei: `0x${string}`;
-    asset: "USDC";
-    market: "cUSDCv3";
-    chainId: number;
-    user: Address;
-    suppliedWei: `0x${string}`;
-    supplied: string;
-    insufficient: boolean;
-  };
-};
 
 export type PrepareWithdrawInput = PrepareDepositInput;
 
@@ -137,16 +141,11 @@ export async function prepareWithdraw(input: PrepareWithdrawInput): Promise<Prep
 
   const insufficient = supplied < amountWei;
 
-  const calls: PreparedCall[] = [
-    {
-      to: addrs.Comet,
-      data: encodeFunctionData({
-        abi: cometAbi,
-        functionName: "withdraw",
-        args: [addrs.USDC, amountWei],
-      }),
-      value: "0x0",
-    },
+  const calls: EvmCall[] = [
+    evmCall(
+      addrs.Comet,
+      encodeFunctionData({ abi: cometAbi, functionName: "withdraw", args: [addrs.USDC, amountWei] }),
+    ),
   ];
 
   return {
@@ -161,5 +160,5 @@ export async function prepareWithdraw(input: PrepareWithdrawInput): Promise<Prep
       supplied: formatUnits(supplied, USDC_DECIMALS),
       insufficient,
     },
-  };
+  } satisfies PreparedWithdraw;
 }
