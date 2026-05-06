@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
     "@wishd/plugin-uniswap",
     "@wishd/plugin-demo-stubs",
     "@wishd/tokens",
+    "@solana/react-hooks",
+    "@solana/client",
   ],
   serverExternalPackages: ["@anthropic-ai/claude-agent-sdk", "@modelcontextprotocol/sdk"],
   // Pin tracing root to this repo (worktree-safe). Without this, a sibling
