@@ -28,8 +28,9 @@ vi.mock("@solana/react-hooks", () => ({
     solanaState.status === "connected"
       ? {
           status: "connected",
+          connectorId: solanaState.connectorName!,
           session: {
-            address: solanaState.address!,
+            account: { address: solanaState.address! },
             connector: { name: solanaState.connectorName! },
           },
         }
@@ -81,8 +82,8 @@ describe("useWishdAccounts", () => {
     });
     const { result } = renderHook(() => useWishdAccounts());
     expect(result.current.accounts).toHaveLength(2);
-    expect(result.current.accounts[0].chainType).toBe("evm");
-    expect(result.current.accounts[1].chainType).toBe("svm");
+    expect(result.current.accounts[0]!.chainType).toBe("evm");
+    expect(result.current.accounts[1]!.chainType).toBe("svm");
     expect(result.current.svm?.connectorName).toBe("Phantom");
   });
 });
