@@ -38,4 +38,9 @@ describe("uniswapIntents", () => {
   it("CHAIN_ID_BY_SLUG covers all supported chains", () => {
     for (const slug of SUPPORTED_CHAIN_SLUGS) expect(CHAIN_ID_BY_SLUG[slug]).toBeGreaterThan(0);
   });
+
+  it("accepts CAIP-2 chain values", () => {
+    expect(() => validateSwapValues({ amount: "1", assetIn: "ETH", assetOut: "USDC", chain: "eip155:8453" }))
+      .not.toThrow();
+  });
 });
