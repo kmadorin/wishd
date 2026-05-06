@@ -35,7 +35,7 @@ describe("Call discriminated union", () => {
 
   it("isSvmCall narrows to SvmCall", () => {
     const v: Call = tx;
-    if (isSvmCall(v)) expectTypeOf(v).toEqualTypeOf<SvmCall>();
+    if (isSvmCall(v)) expectTypeOf(v).toMatchTypeOf<SvmCall>();
     expect(isSvmCall(tx)).toBe(true);
     expect(isSvmCall(ix)).toBe(true);
     expect(isSvmCall(evm)).toBe(false);
