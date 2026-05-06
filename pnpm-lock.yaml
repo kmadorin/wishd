@@ -34,6 +34,9 @@ importers:
       '@wishd/plugin-demo-stubs':
         specifier: workspace:*
         version: link:../../plugins/demo-stubs
+      '@wishd/plugin-jupiter':
+        specifier: workspace:*
+        version: link:../../plugins/jupiter
       '@wishd/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
