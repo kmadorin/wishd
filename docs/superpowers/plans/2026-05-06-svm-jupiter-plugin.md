@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship `@wishd/plugin-jupiter` — the first Solana plugin on the chain-agnostic SDK — exposing a `jupiter.swap` intent that prepares a Jupiter REST `/quote` + `/swap` server-side, returns an `SvmTxCall`, and executes client-side via `useWalletAccountTransactionSendingSigner`.
+**Goal:** Ship `@wishd/plugin-jupiter` — the first Solana plugin on the chain-agnostic SDK — exposing a `jupiter.swap` intent that prepares a Jupiter REST `/quote` + `/swap` server-side, returns an `SvmTxCall`, and executes client-side via `createWalletTransactionSigner` from `@solana/client`.
 
 **Architecture:** Mirror the `plugins/uniswap/` shape, but for Solana mainnet only. Server `prepare()` calls Jupiter v6 REST for quote + swap and emits a `Prepared<JupiterSwapExtras>` with a single `SvmTxCall { kind: "tx", base64, lastValidBlockHeight, staleAfter }`. Client widget decodes the base64 `VersionedTransaction`, signs via `@solana/react-hooks`, polls confirmation. Stale-blockhash refresh runs through the generic `/api/wish/[plugin]/[tool]` route from PR1.
 
@@ -493,13 +493,14 @@ git commit -m "feat(jupiter): SwapSummary widget + decimals on extras"
 
 - [ ] **Step 1: Implement `SwapExecute.tsx`**
 
-Imports through SDK blessed re-exports:
+Imports — blessed SDK re-exports + direct kit signer (PR1 ships only the 7 hooks present in `@solana/react-hooks@1.4.1`; the `useWalletAccountTransactionSendingSigner` hook does NOT exist in that version. Use kit's `createWalletTransactionSigner` from `@solana/client` directly. PR1 may later re-export it via `@wishd/plugin-sdk/svm/react`):
 ```
-import { useSolanaClient, useWalletConnection, useWalletAccountTransactionSendingSigner } from "@wishd/plugin-sdk/svm/react";
+import { useSolanaClient, useWalletConnection } from "@wishd/plugin-sdk/svm/react";
 import { callPluginTool } from "@wishd/plugin-sdk/routes";
 import { explorerTxUrl } from "@wishd/plugin-sdk";
-import { getTransactionDecoder } from "@solana/transactions";
 import { useEmit } from "@wishd/plugin-sdk/client/emit";
+import { createWalletTransactionSigner } from "@solana/client";   // direct — already in workspace
+import { getTransactionDecoder } from "@solana/transactions";
 ```
 
 Phase machine state: `"connect" | "ready" | "preflight" | "submitting" | "confirmed" | "error"`.
@@ -509,7 +510,7 @@ Phase machine state: `"connect" | "ready" | "preflight" | "submitting" | "confir
 2. If `session.chain !== SOLANA_MAINNET` → set error state with text `"switch to Solana mainnet"`. Return.
 3. If `Date.now() > (call.staleAfter ?? 0)` → set phase `"preflight"`; await `callPluginTool<JupiterSwapPrepared>("jupiter", "refresh_swap", { config: prepared.config, summaryId: id })`. Replace `call` with the refreshed first call.
 4. Decode: `const bytes = Uint8Array.from(atob(call.base64), c => c.charCodeAt(0)); const tx = getTransactionDecoder().decode(bytes);`.
-5. Sign + send: `const sendingSigner = useWalletAccountTransactionSendingSigner(session.account, call.caip2);` (hook called at top of component, not inside `execute`); `const [signature] = await sendingSigner.signAndSendTransactions([tx]);`.
+5. Sign + send: build the signer once per session via `const { signer } = createWalletTransactionSigner(session)` (compute inside `execute()` or memoize on `session`); then `const [signature] = await signer.signAndSendTransactions([tx]);`. Kit's signer internally selects `mode: "partial" | "send"` based on the wallet's wallet-standard capabilities — no manual probing.
 6. Confirm via `waitForConfirmation(rpc, signature, call.lastValidBlockHeight)` — local helper polling `rpc.getSignatureStatuses([sig]).send()` every 1 s, bails when `rpc.getBlockHeight().send()` exceeds `lastValidBlockHeight` (throw `"transaction expired"`), success when `value[0]?.confirmationStatus === "confirmed"`.
 7. On success → render `SuccessCard` with link `explorerTxUrl(SOLANA_MAINNET, signature)`. Phase `"confirmed"`.
 8. On error → phase `"error"`, render error message + "retry" button that calls `execute()` again.
@@ -647,7 +648,7 @@ Plugin requires the following exports from `@wishd/plugin-sdk` shipped by PR1 (`
 - **CAIP helpers**: `SOLANA_MAINNET`, `SOLANA_DEVNET`, `EIP155`, `isSvmCaip2`, `humanizeChain`, `parseCaip19`.
 - **Explorer registry**: `explorerTxUrl(caip2, sig)`.
 - **Routes**: `registerPluginTool`, `callPluginTool`, the mounted `/api/wish/[plugin]/[tool]` Next route.
-- **Client surface**: `@wishd/plugin-sdk/svm/react` re-exports of `useSolanaClient`, `useWalletConnection`, `useWalletAccountTransactionSendingSigner`.
+- **Client surface**: `@wishd/plugin-sdk/svm/react` re-exports of `useSolanaClient`, `useWalletConnection`. Note: `useWalletAccountTransactionSendingSigner` is NOT among PR1's blessed hooks — it doesn't exist in `@solana/react-hooks@1.4.1`. PR2 imports `createWalletTransactionSigner` directly from `@solana/client` (already in workspace) for sign+send. PR1 may add it to `svm/react` in a follow-up; not blocking.
 - **Emit bus**: `useEmit` from `@wishd/plugin-sdk/client/emit`.
 - **Tokens**: `findByCaip19`, canonical native SOL CAIP-19 (`solana:5eykt4.../slip44:501`) from `@wishd/tokens`.
 - **Test scaffolding**: `mockSolanaRpc()` from `@wishd/plugin-sdk/svm/testing`.

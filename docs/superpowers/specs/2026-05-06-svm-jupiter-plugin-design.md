@@ -23,7 +23,7 @@ The plugin doubles as the conformance test for PR1 — anywhere PR1's types or h
 
 | # | Q | Answer |
 |---|---|---|
-| D1 | Executor flow for `SvmTxCall { kind: "tx" }` | Decode base64 → `VersionedTransaction` via `@solana/transactions` (`getTransactionDecoder()`); sign with `useWalletAccountTransactionSendingSigner(session.account, caip2)` from `@solana/react-hooks`; submit with `useSolanaClient().rpc.sendTransaction(signed, { encoding: "base64", maxRetries: 0n }).send()`. Confirmation polled via `getSignatureStatuses`. Detail in §Architecture/Executor. |
+| D1 | Executor flow for `SvmTxCall { kind: "tx" }` | Decode base64 → `Transaction` via `@solana/transactions` (`getTransactionDecoder()`); build a `WalletTransactionSigner` via `createWalletTransactionSigner(session)` from `@solana/client` (already in workspace); call `signer.signAndSendTransactions([decodedTx])` — kit's signer abstraction internally handles `mode: "partial" | "send"` based on the wallet's wallet-standard capabilities (no manual probing). Confirmation polled via `useSolanaClient().rpc.getSignatureStatuses([sig]).send()` until `lastValidBlockHeight` passes or `commitment="confirmed"`. Detail in §Architecture/Executor. |
 | D2 | `SvmTxCall` payload Jupiter emits | `{ family: "svm", caip2: SOLANA_MAINNET, kind: "tx", base64, lastValidBlockHeight: bigint, staleAfter: number }`. No extra plugin-private fields on the Call itself; Jupiter-specific routing/fee data lives in `JupiterSwapPrepared` (PR1's `Prepared<TExtras>` shape). Returned in `calls: [oneCall]` per PR1's plural convention. |
 | D3 | `refresh()` transport | Plugin registers a server fn `refreshSwap` via `registerPluginTool("jupiter", "refresh_swap", refreshSwap)` from PR1's `@wishd/plugin-sdk/routes`. Widget calls it via PR1's `callPluginTool("jupiter", "refresh_swap", { config, summaryId })` helper, which POSTs to the generic `/api/wish/[plugin]/[tool]` Next route. Re-runs `/quote` + `/swap`, returns a fresh `JupiterSwapPrepared`. No agent round-trip. Detail in §Transport. |
 | D4 | Token list | Hybrid: small inline curated list (USDC, USDT, SOL, BONK, JUP, JTO, mSOL, jupSOL) shipped in `addresses.ts` for the typeahead options + intent schema. At resolve time, unknown symbols fall back to a server-side cached fetch of `https://tokens.jup.ag/tokens?tags=verified` (1 h LRU). Curated list keeps cold-path UX snappy and gives the agent a stable enum; fallback gives long-tail coverage. |
@@ -172,19 +172,17 @@ Widgets call it via `callPluginTool("jupiter", "refresh_swap", { config, summary
 ### Executor (client-side, in `SwapExecute.tsx`)
 
 ```ts
-// imports go through SDK blessed re-exports per PR1's client surface rule
-import {
-  useSolanaClient,
-  useWalletConnection,
-  useWalletAccountTransactionSendingSigner,
-} from "@wishd/plugin-sdk/svm/react";
+// blessed hook re-exports from PR1
+import { useSolanaClient, useWalletConnection } from "@wishd/plugin-sdk/svm/react";
 import { callPluginTool } from "@wishd/plugin-sdk/routes";
+// kit signer abstraction — direct import from @solana/client (already a workspace dep).
+// PR1 may later re-export this via @wishd/plugin-sdk/svm/react; until then, direct.
+import { createWalletTransactionSigner } from "@solana/client";
 import { getTransactionDecoder } from "@solana/transactions";
 
 const { rpc } = useSolanaClient();
 const { session } = useWalletConnection();
 const call0 = prepared.calls[0] as SvmTxCall;
-const sendingSigner = useWalletAccountTransactionSendingSigner(session.account, call0.caip2);
 
 async function execute() {
   // 1. staleness check
@@ -194,12 +192,14 @@ async function execute() {
     call = refreshed.calls[0] as SvmTxCall;
   }
 
-  // 2. decode base64 → VersionedTransaction
+  // 2. decode base64 → kit Transaction
   const bytes = Uint8Array.from(atob(call.base64), c => c.charCodeAt(0));
   const tx = getTransactionDecoder().decode(bytes);
 
-  // 3. sign + send via WalletTransactionSendingSigner — kit handles partial-sign vs send mode
-  const [signature] = await sendingSigner.signAndSendTransactions([tx]);
+  // 3. sign + send. Kit's signer wraps the wallet session and internally chooses
+  //    between "partial" (sign locally, we send) and "send" (wallet signs+sends).
+  const { signer } = createWalletTransactionSigner(session);
+  const [signature] = await signer.signAndSendTransactions([tx]);
 
   // 4. confirm — poll signature status until lastValidBlockHeight passes or commitment="confirmed"
   await waitForConfirmation(rpc, signature, call.lastValidBlockHeight);
@@ -244,7 +244,7 @@ Integration: none in v1 (D8). README documents this and the rationale.
 
 - `pnpm typecheck` clean across workspace including the new plugin package.
 - `pnpm test` green; new plugin's unit tests cover `prepare`, `refresh`, `resolveAsset`, `intents`.
-- Agent flow on local dev: typing "swap 0.1 SOL to USDC on Solana" produces a `jupiter-swap-summary` widget; clicking Execute opens `jupiter-swap-execute`, signs via Phantom (`useWalletAccountTransactionSendingSigner`), submits, surfaces a Solscan link.
+- Agent flow on local dev: typing "swap 0.1 SOL to USDC on Solana" produces a `jupiter-swap-summary` widget; clicking Execute opens `jupiter-swap-execute`, signs via Phantom (kit's `createWalletTransactionSigner` from `@solana/client`), submits, surfaces a Solscan link.
 - Stale-blockhash path exercised: artificially set `staleAfter = Date.now() - 1000` in dev → execute calls `callPluginTool("jupiter", "refresh_swap", ...)` (which POSTs to the generic `/api/wish/jupiter/refresh_swap` route) and proceeds with the new tx.
 - Manifest declares `chains: [SOLANA_MAINNET]` only; attempting to use the plugin from a devnet-connected wallet surfaces a clear "switch to Solana mainnet" error in the execute widget (no partial sign).
 - `@wishd/plugin-jupiter` listed in `apps/web/next.config.ts` `transpilePackages` (CLAUDE.md recurring trap).
