@@ -1,23 +1,27 @@
 "use client";
 
-import { useAccount, useConnect, useConnectors, useDisconnect } from "wagmi";
+import { useWalletMenu } from "@/store/walletMenu";
+import { useWishdAccounts } from "@/lib/wallets/useWishdAccounts";
+
+function truncate(addr: string, chainType: "evm" | "svm"): string {
+  const tail = chainType === "svm" ? 5 : 4;
+  if (addr.length <= 6 + tail) return addr;
+  return `${addr.slice(0, 6)}…${addr.slice(-tail)}`;
+}
 
 export function ConnectBadge() {
-  const { address, isConnected } = useAccount();
-  const connectors = useConnectors();
-  const portoConnector = connectors[0];
-  const { connect, isPending } = useConnect();
-  const { disconnect } = useDisconnect();
+  const { open } = useWalletMenu();
+  const { evm, svm } = useWishdAccounts();
+  const connectedCount = (evm ? 1 : 0) + (svm ? 1 : 0);
 
-  if (isConnected && address) {
+  if (connectedCount === 0) {
     return (
       <button
         type="button"
-        onClick={() => disconnect()}
-        className="ml-auto rounded-pill bg-bg-2 border border-rule px-3 py-1 text-xs font-mono text-ink-2 hover:text-ink"
-        title="disconnect"
+        onClick={open}
+        className="ml-auto rounded-pill bg-accent text-ink px-4 py-1 text-sm font-semibold hover:bg-accent-2"
       >
-        {address.slice(0, 6)}…{address.slice(-4)}
+        connect wallet
       </button>
     );
   }
@@ -25,11 +29,13 @@ export function ConnectBadge() {
   return (
     <button
       type="button"
-      disabled={isPending || !portoConnector}
-      onClick={() => portoConnector && connect({ connector: portoConnector })}
-      className="ml-auto rounded-pill bg-accent text-ink px-4 py-1 text-sm font-semibold hover:bg-accent-2 disabled:opacity-50"
+      onClick={open}
+      title="manage wallets"
+      className="ml-auto rounded-pill bg-bg-2 border border-rule px-3 py-1 text-xs font-mono text-ink-2 hover:text-ink flex items-center gap-2"
     >
-      {isPending ? "connecting…" : "connect wallet"}
+      {evm && <span>{truncate(evm.address, "evm")}</span>}
+      {evm && svm && <span className="text-ink-3">·</span>}
+      {svm && <span>{truncate(svm.address, "svm")}</span>}
     </button>
   );
 }
