@@ -47,7 +47,7 @@ export function WalletDrawer() {
     <div
       role="dialog"
       aria-label="wallets"
-      className="fixed inset-y-0 right-0 z-50 w-[360px] bg-bg-1 border-l border-rule p-4 flex flex-col gap-4 overflow-y-auto"
+      className="fixed inset-y-0 right-0 z-50 w-[360px] bg-bg-2 border-l border-rule shadow-2xl p-4 flex flex-col gap-4 overflow-y-auto"
     >
       <div className="flex items-center justify-between">
         <button
