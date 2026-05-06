@@ -4,6 +4,7 @@ import { cookieToInitialState } from "wagmi";
 import { Providers } from "./providers";
 import { getConfig } from "@/lib/wagmi";
 import { KeeperDeployFlow } from "@/components/wish/KeeperDeployFlow";
+import { WalletDrawer } from "@/components/wish/WalletDrawer";
 import "./globals.css";
 
 export const metadata = {
@@ -18,6 +19,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <Providers initialState={initialState}>
           {children}
           <KeeperDeployFlow />
+          <WalletDrawer />
         </Providers>
       </body>
     </html>
