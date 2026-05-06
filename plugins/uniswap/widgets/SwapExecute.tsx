@@ -15,7 +15,7 @@ import { ExecuteTimeline } from "../../../apps/web/components/primitives/Execute
 import { SuccessCard } from "../../../apps/web/components/primitives/SuccessCard";
 import { useWorkspace } from "../../../apps/web/store/workspace";
 import { validateCall } from "../strategies/validateCall";
-import type { SwapConfig, SwapQuote, Call, KeeperOffer } from "../types";
+import type { SwapConfig, SwapQuote, Call, StrategyCall, KeeperOffer } from "../types";
 
 // ---------------------------------------------------------------------------
 // Inline helpers (mirrors SwapSummary to avoid cross-package circular import)
@@ -299,7 +299,7 @@ export function SwapExecute(props: SwapExecuteProps) {
         throw new HttpError(swapRes.status, (body as { error?: string }).error ?? swapRes.statusText);
       }
       const { swapCall, approvalStillRequired } = (await swapRes.json()) as {
-        swapCall: Partial<import("../types").Call>;
+        swapCall: Partial<StrategyCall>;
         approvalStillRequired: boolean;
       };
 
