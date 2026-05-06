@@ -19,6 +19,9 @@ importers:
       '@solana/client':
         specifier: 1.7.0
         version: 1.7.0(@solana/sysvars@5.5.1(typescript@5.9.3))(@types/react@19.2.14)(bufferutil@4.1.0)(react@19.2.5)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.5))(utf-8-validate@5.0.10)
+      '@solana/kit':
+        specifier: ^5.5.1
+        version: 5.5.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)
       '@solana/react-hooks':
         specifier: 1.4.1
         version: 1.4.1(@solana/sysvars@5.5.1(typescript@5.9.3))(@types/react@19.2.14)(bufferutil@4.1.0)(react@19.2.5)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.5))(utf-8-validate@5.0.10)
