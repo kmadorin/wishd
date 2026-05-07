@@ -34,7 +34,7 @@ export function BridgeSummary({ prepared, onExecute, onRefresh }: BridgeSummaryP
   );
   const [highImpactAck, setHighImpactAck] = useState(false);
 
-  const isStale = Date.now() > staleAfter;
+  const isStale = staleAfter !== undefined && Date.now() > staleAfter;
   const priceImpactPct: number = (quote as any).priceImpactPct ?? 0;
   const needsHighImpactAck = priceImpactPct > 5;
 

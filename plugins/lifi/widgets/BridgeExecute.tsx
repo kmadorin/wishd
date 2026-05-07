@@ -8,6 +8,8 @@ import {
   useWriteContract,
 } from "wagmi";
 import { callPluginTool } from "@wishd/plugin-sdk/routes";
+import { isEvmCall } from "@wishd/plugin-sdk";
+import type { EvmCall } from "@wishd/plugin-sdk";
 import type { LifiBridgePrepared } from "../types";
 import { useBridgeProgressStore } from "../store/bridgeProgressStore";
 import { BridgeProgress } from "./BridgeProgress";
@@ -57,7 +59,7 @@ export function BridgeExecute({ prepared: initialPrepared }: BridgeExecuteProps)
   const requiredChainId = caip2ToChainId(prepared.config.fromCaip2);
   const isWrongChain = isConnected && chainId !== requiredChainId;
   const hasTwoCalls = prepared.calls.length === 2;
-  const isStale = Date.now() > prepared.staleAfter;
+  const isStale = prepared.staleAfter !== undefined && Date.now() > prepared.staleAfter;
 
   // If already submitted, render progress
   if (phase === "submitted" && submittedTxHash) {
@@ -97,8 +99,9 @@ export function BridgeExecute({ prepared: initialPrepared }: BridgeExecuteProps)
 
   async function handleApprove() {
     setErrMsg(null);
-    const approvalCall = prepared.calls[0];
-    if (!approvalCall) return;
+    const rawCall = prepared.calls[0];
+    if (!rawCall || !isEvmCall(rawCall)) return;
+    const approvalCall = rawCall as EvmCall;
 
     try {
       setPhase("approve");
@@ -129,8 +132,9 @@ export function BridgeExecute({ prepared: initialPrepared }: BridgeExecuteProps)
   }
 
   async function handleBridge() {
-    const bridgeCall = hasTwoCalls ? prepared.calls[1] : prepared.calls[0];
-    if (!bridgeCall) return;
+    const rawBridgeCall = hasTwoCalls ? prepared.calls[1] : prepared.calls[0];
+    if (!rawBridgeCall || !isEvmCall(rawBridgeCall)) return;
+    const bridgeCall = rawBridgeCall as EvmCall;
 
     setErrMsg(null);
     setPhase("submitting");
@@ -145,20 +149,22 @@ export function BridgeExecute({ prepared: initialPrepared }: BridgeExecuteProps)
 
       // Persist bridge record
       const store = useBridgeProgressStore.getState();
-      const obs = prepared.observations[0]!;
-      store.upsert({
-        id: txHash,
-        config: prepared.config,
-        observation: {
-          ...obs,
-          query: {
-            ...obs.query,
-            txHash,
-          },
-        },
-        startedAt: Date.now(),
-        lastStatus: "PENDING",
-      });
+      const obs = (prepared.observations ?? [])[0];
+      if (obs) {
+        store.upsert({
+          id: txHash,
+          config: prepared.config,
+          observation: {
+            ...obs,
+            query: {
+              ...obs.query,
+              txHash,
+            },
+          } as any,
+          startedAt: Date.now(),
+          lastStatus: "PENDING",
+        });
+      }
 
       setSubmittedTxHash(txHash);
       setPhase("submitted");
