@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>wishd — slide 2</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .s2 .pain { display: flex; gap: 28px; align-items: flex-start; padding: 24px 0; }
+    .s2 .pain + .pain { border-top: 1.5px dashed var(--rule); }
+    .s2 .pain .num {
+      font-family: 'Caveat', cursive; font-weight: 700;
+      font-size: 92px; line-height: 1; color: var(--accent);
+      flex: 0 0 110px;
+    }
+    .s2 .pain .copy { display: flex; flex-direction: column; gap: 10px; }
+    .s2 .pain h3 { font-size: 38px; font-weight: 700; margin: 0; }
+    .s2 .pain p { font-size: 26px; font-weight: 500; color: var(--ink-2); margin: 0; line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <section class="slide s2">
+    <header class="slide-header">
+      <span class="wordmark">wishd</span>
+      <span class="pageno">2 / 7 — problem</span>
+    </header>
+    <h1 class="slide-title">DeFi today: three broken pieces.</h1>
+    <div>
+      <div class="pain">
+        <div class="num">1</div>
+        <div class="copy">
+          <h3>Fragmented UX.</h3>
+          <p>Every protocol = own app, own mental model. Five protocols, five UIs to learn.</p>
+        </div>
+      </div>
+      <div class="pain">
+        <div class="num">2</div>
+        <div class="copy">
+          <h3>Agents = CLI or generic chat.</h3>
+          <p>Devs only, or no DeFi-shaped UI. Non-devs locked out either way.</p>
+        </div>
+      </div>
+      <div class="pain">
+        <div class="num">3</div>
+        <div class="copy">
+          <h3>Agentic wallets = honeypot.</h3>
+          <p>Hot wallet + runtime LLM ⇒ prompt injection drains funds.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</body>
+</html>

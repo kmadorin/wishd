@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>wishd — pitch deck</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    html, body { height: 100%; margin: 0; background: #000; overflow: hidden; }
+    .stage { position: fixed; inset: 0; display: grid; place-items: center; }
+    .scaler {
+      width: calc(1920px * var(--scale, 1));
+      height: calc(1080px * var(--scale, 1));
+      position: relative;
+      box-shadow: 0 8px 60px rgba(0,0,0,0.4);
+    }
+    .frame {
+      position: absolute; left: 0; top: 0;
+      width: 1920px; height: 1080px;
+      transform-origin: 0 0;
+      transform: scale(var(--scale, 1));
+      border: 0;
+      background: var(--bg);
+    }
+    .nav {
+      position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+      font-family: 'JetBrains Mono', monospace;
+      color: rgba(255,255,255,0.6); font-size: 12px;
+      pointer-events: none;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="scaler">
+      <iframe class="frame" id="frame" src="slide-01-title.html"></iframe>
+    </div>
+  </div>
+  <div class="nav" id="nav">1 / 7 — ←/→ to navigate</div>
+
+  <script>
+    const slides = [
+      'slide-01-title.html',
+      'slide-02-problem.html',
+      'slide-03-solution.html',
+      'slide-04-how.html',
+      'slide-05-next.html',
+      'slide-06-team.html',
+      'slide-07-thanks.html',
+    ];
+    let i = 0;
+    const frame = document.getElementById('frame');
+    const nav = document.getElementById('nav');
+
+    function go(n) {
+      i = Math.max(0, Math.min(slides.length - 1, n));
+      frame.src = slides[i];
+      nav.textContent = `${i + 1} / ${slides.length} — ←/→ to navigate`;
+      history.replaceState(null, '', `#${i + 1}`);
+    }
+
+    function fit() {
+      const sx = window.innerWidth / 1920;
+      const sy = window.innerHeight / 1080;
+      const s = Math.min(sx, sy);
+      document.documentElement.style.setProperty('--scale', s);
+    }
+    window.addEventListener('resize', fit);
+    fit();
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); go(i + 1); }
+      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(i - 1); }
+      else if (e.key === 'Home') { go(0); }
+      else if (e.key === 'End') { go(slides.length - 1); }
+    });
+
+    const initial = parseInt((location.hash || '#1').slice(1), 10);
+    if (!isNaN(initial)) go(initial - 1);
+  </script>
+</body>
+</html>
