@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
     "@wishd/plugin-sdk",
     "@wishd/plugin-compound-v3",
     "@wishd/plugin-uniswap",
+    "@wishd/plugin-jupiter",
     "@wishd/plugin-demo-stubs",
     "@wishd/tokens",
     "@solana/react-hooks",

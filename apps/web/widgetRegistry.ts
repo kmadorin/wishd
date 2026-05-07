@@ -5,6 +5,7 @@ import {
   CompoundWithdrawSummary,
 } from "@wishd/plugin-compound-v3/widgets";
 import { SwapSummary, SwapExecute } from "@wishd/plugin-uniswap/widgets";
+import { JupiterSwapSummary, JupiterSwapExecute } from "@wishd/plugin-jupiter/widgets";
 import { BorrowWidget, EarnVaultWidget, BridgeWidget } from "@wishd/plugin-demo-stubs/widgets";
 import { KeeperhubAuthCard } from "@/components/wish/KeeperhubAuthCard";
 import { KeeperOfferCard } from "@/components/wish/KeeperOfferCard";
@@ -15,6 +16,8 @@ export const widgetRegistry: Record<string, ComponentType<any>> = {
   "compound-withdraw-summary": CompoundWithdrawSummary,
   "swap-summary": SwapSummary,
   "swap-execute": SwapExecute,
+  "jupiter-swap-summary": JupiterSwapSummary,
+  "jupiter-swap-execute": JupiterSwapExecute,
   "keeperhub-auth": KeeperhubAuthCard,
   "borrow-demo": BorrowWidget,
   "earn-demo": EarnVaultWidget,
