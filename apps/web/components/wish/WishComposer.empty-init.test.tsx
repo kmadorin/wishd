@@ -5,6 +5,9 @@ import { WishComposer } from "./WishComposer";
 vi.mock("wagmi", () => ({
   useAccount: () => ({ address: undefined, chainId: undefined, isConnected: false }),
 }));
+vi.mock("@solana/react-hooks", () => ({
+  useWalletConnection: () => ({ wallet: undefined, connected: false, connectors: [] }),
+}));
 
 describe("WishComposer empty initial state", () => {
   it("renders 'pick action' placeholder, no schema preselected", () => {

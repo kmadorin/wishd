@@ -8,8 +8,11 @@ import {
 } from "@plugins/compound-v3/prepare";
 import { prepareSwap } from "@plugins/uniswap/prepare";
 import { CHAIN_ID_BY_SLUG } from "@plugins/uniswap/intents";
+import { prepareSwap as prepareJupiterSwap } from "@plugins/jupiter/prepare";
 import { uniswapStrategies, publicClientFor } from "./uniswapClients";
+import { solanaRpcFor } from "./jupiterClients";
 import { getIntentSchema } from "./intentRegistry";
+import { SOLANA_MAINNET } from "@wishd/plugin-sdk";
 
 export type DispatchInput = {
   body: Record<string, unknown>;
@@ -69,6 +72,42 @@ export async function dispatchIntent(
         type: widgetType,
         slot: "flow",
         props: rest as Record<string, unknown>,
+      },
+    };
+  }
+
+  if (intent === "jupiter.swap") {
+    const swapper = input.body.swapper;
+    if (typeof swapper !== "string" || swapper.length < 32) {
+      throw new Error("connect a Solana wallet to swap on Solana");
+    }
+    const chain = String(input.body.chain ?? "");
+    if (chain !== SOLANA_MAINNET) throw new Error(`unsupported chain: ${chain}`);
+    const prepared = await prepareJupiterSwap({
+      values: {
+        amount:   requireAmount(input.body),
+        assetIn:  String(input.body.assetIn),
+        assetOut: String(input.body.assetOut),
+        chain,
+        slippage: typeof input.body.slippage === "string" ? input.body.slippage : "0.5%",
+      },
+      swapper,
+      rpc: solanaRpcFor(chain) as never,
+    });
+    // Coerce bigints (lastValidBlockHeight) for JSON serialization.
+    const preparedJson = JSON.parse(
+      JSON.stringify(prepared, (_k, v) => (typeof v === "bigint" ? v.toString() : v)),
+    );
+    return {
+      prepared: preparedJson,
+      widget: {
+        id: newWidgetId(),
+        type: schema.widget,
+        slot: "flow",
+        props: {
+          id: newWidgetId(),
+          prepared: preparedJson,
+        },
       },
     };
   }

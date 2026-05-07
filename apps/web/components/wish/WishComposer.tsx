@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useAccount } from "wagmi";
-import { humanizeChain, renderSentenceParts, type IntentField, type IntentSchema } from "@wishd/plugin-sdk";
+import { useWalletConnection } from "@solana/react-hooks";
+import { humanizeChain, isSvmCaip2, renderSentenceParts, type IntentField, type IntentSchema } from "@wishd/plugin-sdk";
 import { useWorkspace } from "@/store/workspace";
 import { startStream } from "./EventStream";
 import { StepCard } from "@/components/primitives/StepCard";
@@ -54,12 +55,28 @@ export function WishComposer() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [openPillKey, setOpenPillKey] = useState<string | null>(null);
   const { address, chainId, isConnected } = useAccount();
+  const solana = useWalletConnection();
   const ws = useWorkspace();
 
   const account = {
     address: (address ?? "0x0000000000000000000000000000000000000000") as `0x${string}`,
     chainId: chainId ?? 11155111,
   };
+
+  function isSvmIntent(s: IntentSchema): boolean {
+    const chainField = s.fields.find((f) => f.type === "chain");
+    if (!chainField || !("options" in chainField)) return false;
+    const options = chainField.options as string[];
+    return options.length > 0 && options.every(isSvmCaip2);
+  }
+
+  function buildSubmitBody(s: IntentSchema, vs: Record<string, string>): Record<string, unknown> {
+    if (isSvmIntent(s)) {
+      const swapper = solana.wallet?.account?.address;
+      return { ...vs, swapper, address: account.address };
+    }
+    return { ...vs, address: account.address };
+  }
 
   useEffect(() => {
     function closeOnOutsideMouseDown(e: MouseEvent) {
@@ -157,7 +174,7 @@ export function WishComposer() {
     const tPrepare = performance.now();
     try {
       const out = await Promise.race([
-        prepareIntent(s.intent, { ...vs, address: account.address }, { signal: controller.signal }),
+        prepareIntent(s.intent, buildSubmitBody(s, vs), { signal: controller.signal }),
         timeout,
       ]);
       if (timedOut) return;
@@ -284,11 +301,21 @@ export function WishComposer() {
                 value={schema?.verb}
                 placeholder="pick action"
                 ariaLabel="Select action"
-                options={CLIENT_INTENT_SCHEMAS.map((s) => ({
-                  id: s.intent,
-                  label: s.verb,
-                  sub: s.description,
-                }))}
+                options={(() => {
+                  const verbCount = new Map<string, number>();
+                  for (const s of CLIENT_INTENT_SCHEMAS) {
+                    verbCount.set(s.verb, (verbCount.get(s.verb) ?? 0) + 1);
+                  }
+                  return CLIENT_INTENT_SCHEMAS.map((s) => {
+                    const ambiguous = (verbCount.get(s.verb) ?? 0) > 1;
+                    const plugin = s.intent.split(".")[0];
+                    return {
+                      id: s.intent,
+                      label: ambiguous ? `${s.verb} (${plugin})` : s.verb,
+                      sub: s.description,
+                    };
+                  });
+                })()}
                 open={openPillKey === "action"}
                 onOpenChange={(o) => setOpenPillKey(o ? "action" : null)}
                 onChange={pickSchema}

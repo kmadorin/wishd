@@ -6,6 +6,9 @@ import { WishComposer } from "./WishComposer";
 vi.mock("wagmi", () => ({
   useAccount: () => ({ address: "0x1111111111111111111111111111111111111111", chainId: 11155111, isConnected: true }),
 }));
+vi.mock("@solana/react-hooks", () => ({
+  useWalletConnection: () => ({ wallet: undefined, connected: false, connectors: [] }),
+}));
 
 vi.mock("@/lib/intentRegistry.client", () => {
   const lendSchema: IntentSchema = {
