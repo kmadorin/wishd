@@ -12,20 +12,9 @@ const CHAIN_BY_ID: Record<number, (typeof mainnet) | (typeof base) | (typeof arb
   137: polygon,
 };
 
-const RPC_ENV_BY_CHAIN_ID: Record<number, string> = {
-  1: "ETHEREUM_RPC_URL",
-  8453: "BASE_RPC_URL",
-  42161: "ARBITRUM_RPC_URL",
-  10: "OPTIMISM_RPC_URL",
-  137: "POLYGON_RPC_URL",
-};
-
 function rpcUrlFor(chainId: number): string | undefined {
-  const envKey = RPC_ENV_BY_CHAIN_ID[chainId];
-  if (envKey) {
-    return process.env[envKey] ?? undefined;
-  }
-  return undefined;
+  // Match repo convention used by uniswapClients.ts: RPC_URL_<chainId>
+  return process.env[`RPC_URL_${chainId}`] ?? undefined;
 }
 
 /**
@@ -43,8 +32,8 @@ export function evmPublicClientFor(caip2: string) {
   if (!chain) {
     throw new Error(`unsupported chain: ${caip2}`);
   }
-  const rpcUrl = rpcUrlFor(chainId) ?? undefined;
-  return createPublicClient({ chain, transport: http(rpcUrl) });
+  const rpcUrl = rpcUrlFor(chainId);
+  return createPublicClient({ chain, transport: http(rpcUrl, { timeout: 3500 }) });
 }
 
 export type LiFiFetchOptions = {
