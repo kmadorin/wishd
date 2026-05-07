@@ -43,7 +43,7 @@
           <text x="60" y="78" font-size="22" font-weight="700" fill="#1F1B16">Browser</text>
           <text x="60" y="118" font-size="18" fill="#5A4F40">Composer / Activity sidebar</text>
           <text x="60" y="148" font-size="18" fill="#5A4F40">Widgets / Modal</text>
-          <text x="60" y="178" font-size="18" fill="#5A4F40">Porto wallet (sign)</text>
+          <text x="60" y="178" font-size="18" fill="#5A4F40">Wallets (sign)</text>
           <circle cx="385" cy="60" r="5" fill="#E89A6B">
             <animate attributeName="opacity" values="0.2;1;0.2" dur="1.2s" repeatCount="indefinite"/>
           </circle>
@@ -54,11 +54,12 @@
           <rect x="600" y="40" width="560" height="320" rx="12" fill="#FFFCF3" stroke="#1F1B16" stroke-width="2"/>
           <text x="620" y="78" font-size="22" font-weight="700" fill="#1F1B16">Server (Next.js + Claude Agent SDK)</text>
           <text x="620" y="118" font-size="18" fill="#5A4F40">agent loop</text>
-          <text x="650" y="150" font-size="16" font-family="'JetBrains Mono', monospace" fill="#1F1B16">├─ MCP: keeperhub.*</text>
-          <text x="650" y="178" font-size="16" font-family="'JetBrains Mono', monospace" fill="#1F1B16">├─ MCP: uniswap.*</text>
-          <text x="650" y="206" font-size="16" font-family="'JetBrains Mono', monospace" fill="#1F1B16">├─ plugins/uniswap</text>
-          <text x="650" y="234" font-size="16" font-family="'JetBrains Mono', monospace" fill="#1F1B16">├─ plugins/compound-v3</text>
-          <text x="650" y="262" font-size="16" font-family="'JetBrains Mono', monospace" fill="#1F1B16">└─ keepers/auto-compound-comp</text>
+          <text x="650" y="150" font-size="16" font-family="'JetBrains Mono', monospace" fill="#1F1B16">├─ MCP: automationshub.*</text>
+          <text x="650" y="178" font-size="16" font-family="'JetBrains Mono', monospace" fill="#1F1B16">├─ MCP: jupiter.*</text>
+          <text x="650" y="206" font-size="16" font-family="'JetBrains Mono', monospace" fill="#1F1B16">├─ MCP: lifi.*</text>
+          <text x="650" y="234" font-size="16" font-family="'JetBrains Mono', monospace" fill="#1F1B16">├─ plugins/jupiter</text>
+          <text x="650" y="262" font-size="16" font-family="'JetBrains Mono', monospace" fill="#1F1B16">├─ plugins/lifi</text>
+          <text x="650" y="290" font-size="16" font-family="'JetBrains Mono', monospace" fill="#1F1B16">└─ automations/dca-weekly</text>
         </g>
 
         <!-- SSE arrow Server -> Browser (peach, animated dashes) -->
@@ -71,14 +72,14 @@
           <text x="430" y="200">widget.render · widget.patch</text>
         </g>
 
-        <!-- Porto session-key arrow Browser -> KH -->
+        <!-- Session-key arrow Browser -> AutomationsHub -->
         <line x1="230" y1="280" x2="230" y2="450" stroke="#5A4F40" stroke-width="2" marker-end="url(#arrow)"/>
-        <text x="245" y="370" font-size="14" font-family="'JetBrains Mono', monospace" fill="#5A4F40">Porto session-key</text>
+        <text x="245" y="370" font-size="14" font-family="'JetBrains Mono', monospace" fill="#5A4F40">Session-key</text>
 
-        <!-- KeeperHub box (bottom-left) -->
+        <!-- AutomationsHub box (bottom-left) -->
         <g>
           <rect x="40" y="450" width="380" height="200" rx="12" fill="#FFFCF3" stroke="#1F1B16" stroke-width="2"/>
-          <text x="60" y="488" font-size="22" font-weight="700" fill="#1F1B16">KeeperHub (off-app)</text>
+          <text x="60" y="488" font-size="22" font-weight="700" fill="#1F1B16">AutomationsHub (off-app)</text>
           <text x="60" y="528" font-size="18" fill="#5A4F40">deterministic DAG</text>
           <text x="60" y="558" font-size="18" fill="#5A4F40">cron-scheduled exec</text>
         </g>
@@ -91,7 +92,7 @@
         <g>
           <rect x="600" y="490" width="380" height="120" rx="12" fill="#DCF1E2" stroke="#1F1B16" stroke-width="2"/>
           <text x="620" y="528" font-size="22" font-weight="700" fill="#1F1B16">Onchain</text>
-          <text x="620" y="568" font-size="18" fill="#5A4F40">Uniswap · Compound (Sepolia)</text>
+          <text x="620" y="568" font-size="16" fill="#5A4F40">Solana (Jupiter) · Ethereum (Li.Fi bridge)</text>
         </g>
 
         <!-- Callout marker dots — placed OUTSIDE boxes to avoid overlapping titles -->
@@ -99,7 +100,7 @@
         <circle cx="1170" cy="40" r="16" fill="#E89A6B" stroke="#FBF4E8" stroke-width="3"/>
         <text x="1170" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="white">1</text>
 
-        <!-- 2: right of "Porto session-key" label, clear of arrow -->
+        <!-- 2: right of "Session-key" label, clear of arrow -->
         <circle cx="420" cy="365" r="16" fill="#E89A6B" stroke="#FBF4E8" stroke-width="3"/>
         <text x="420" y="371" text-anchor="middle" font-size="16" font-weight="700" fill="white">2</text>
 
@@ -114,11 +115,11 @@
         </div>
         <div class="callout">
           <div class="num">2</div>
-          <div class="text"><strong>Your wallet, scoped.</strong> Porto session-key per workflow — token / cap / expiry. Revocable.</div>
+          <div class="text"><strong>Your wallet, scoped.</strong> Session-key per workflow — token / cap / expiry. Revocable.</div>
         </div>
         <div class="callout">
           <div class="num">3</div>
-          <div class="text"><strong>KH executes, not LLM.</strong> Workflows = deterministic DAG. No prompt injection at runtime.</div>
+          <div class="text"><strong>AutomationsHub executes, not LLM.</strong> Workflows = deterministic DAG. No prompt injection at runtime.</div>
         </div>
       </div>
     </div>
