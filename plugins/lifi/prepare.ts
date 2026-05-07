@@ -113,17 +113,29 @@ export async function quoteAndBuild(
 
   const isNativeFrom = fromToken === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
-  // Check if approval is needed
+  // Check if approval is needed.
+  // If the allowance read fails or hangs (default RPC rate-limited), assume
+  // approval is needed — safer to prompt user than to hang the prepare flow.
   if (estimate.approvalAddress && !isNativeFrom) {
     const pc = deps.evmPublicClientFor(fromCaip2);
-    const allowance = await pc.readContract({
-      address: fromToken as `0x${string}`,
-      abi: erc20Abi,
-      functionName: "allowance",
-      args: [fromAddress as `0x${string}`, estimate.approvalAddress as `0x${string}`],
-    }) as bigint;
-
     const amountAtomicBigInt = BigInt(amountAtomic);
+    const ALLOWANCE_TIMEOUT_MS = 4000;
+    let allowance: bigint = 0n;
+    try {
+      allowance = await Promise.race([
+        pc.readContract({
+          address: fromToken as `0x${string}`,
+          abi: erc20Abi,
+          functionName: "allowance",
+          args: [fromAddress as `0x${string}`, estimate.approvalAddress as `0x${string}`],
+        }) as Promise<bigint>,
+        new Promise<bigint>((_, reject) =>
+          setTimeout(() => reject(new Error("allowance read timeout")), ALLOWANCE_TIMEOUT_MS),
+        ),
+      ]);
+    } catch {
+      allowance = 0n;
+    }
 
     if (allowance < amountAtomicBigInt) {
       const approveData = encodeFunctionData({
