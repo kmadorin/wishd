@@ -174,6 +174,8 @@ export type { Observation, LifiStatusObservation, Placeholder } from "./observat
 export { isPlaceholder } from "./observation";
 
 export * from "./caip";
+export { explorerTxUrl, explorerAddressUrl, registerExplorer } from "./explorers";
+export type { ExplorerEntry } from "./explorers";
 
 export type Plugin = {
   manifest: Manifest;

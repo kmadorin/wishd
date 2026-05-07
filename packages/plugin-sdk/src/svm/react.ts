@@ -10,4 +10,5 @@ export {
   useWrapSol,
   useSplToken,
   useWallet,
+  useWalletSession,
 } from "@solana/react-hooks";
