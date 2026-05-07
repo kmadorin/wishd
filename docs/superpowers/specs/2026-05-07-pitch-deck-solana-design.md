@@ -1,6 +1,6 @@
-# Pitch Deck — Solana Colosseum
+# Pitch Deck — Solana Startup Competition Belgrade
 
-Spec for adapting `experiments/pitch-deck` (ETHGlobal Open Agents) into `experiments/pitch-deck-solana` (Solana Colosseum hackathon submission).
+Spec for adapting `experiments/pitch-deck` (ETHGlobal Open Agents) into `experiments/pitch-deck-solana` (Solana Startup Competition Belgrade submission).
 
 ## Goal
 
@@ -17,8 +17,8 @@ Out of scope: deck infrastructure changes, new slides, redesigning layouts, cont
 ## Slide-by-slide changes
 
 ### Slide 1 — title
-- Footer: `Kirill Madorin · ETHGlobal Open Agents 2026` → `Kirill Madorin · Solana Colosseum 2026`
-- `<title>` tag and any page-meta text referencing the old hackathon → Solana Colosseum.
+- Footer: `Kirill Madorin · ETHGlobal Open Agents 2026` → `Kirill Madorin · Solana Startup Competition Belgrade 2026`
+- `<title>` tag and any page-meta text referencing the old hackathon → Solana Startup Competition Belgrade.
 
 ### Slide 2 — problem
 - Unchanged.
@@ -72,7 +72,7 @@ SVG diagram + callout edits in `slide-04-how.html`.
 - Unchanged content. Footer/page meta updated only if it references ETHGlobal.
 
 ### `index.html`
-- Update any deck-level title/meta references from ETHGlobal Open Agents → Solana Colosseum.
+- Update any deck-level title/meta references from ETHGlobal Open Agents → Solana Startup Competition Belgrade.
 
 ### `styles.css`
 - No changes expected. If a class is renamed for clarity it stays scoped to this folder.
