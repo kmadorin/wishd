@@ -300,6 +300,49 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@22.19.17)(jsdom@25.0.1(bufferutil@4.1.0)(utf-8-validate@5.0.10))
 
+  plugins/lifi:
+    dependencies:
+      '@anthropic-ai/claude-agent-sdk':
+        specifier: ^0.2.0
+        version: 0.2.126(zod@4.4.1)
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.0.0
+        version: 1.29.0(zod@4.4.1)
+      '@wishd/plugin-jupiter':
+        specifier: workspace:*
+        version: link:../jupiter
+      '@wishd/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
+      '@wishd/tokens':
+        specifier: workspace:*
+        version: link:../../packages/wishd-tokens
+      react:
+        specifier: ^19.0.0
+        version: 19.2.5
+      viem:
+        specifier: ^2.21.0
+        version: 2.48.7(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.4.1)
+      wagmi:
+        specifier: ^2.12.0
+        version: 2.19.5(@tanstack/query-core@5.100.7)(@tanstack/react-query@5.100.7(react@19.2.5))(@types/react@19.2.14)(bufferutil@4.1.0)(react@19.2.5)(typescript@5.9.3)(utf-8-validate@5.0.10)(viem@2.48.7(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.4.1))(zod@4.4.1)
+      zod:
+        specifier: ^4.0.0
+        version: 4.4.1
+      zustand:
+        specifier: ^5.0.0
+        version: 5.0.12(@types/react@19.2.14)(react@19.2.5)(use-sync-external-store@1.6.0(react@19.2.5))
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.14
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.19.17)(jsdom@25.0.1(bufferutil@4.1.0)(utf-8-validate@5.0.10))
+
   plugins/uniswap:
     dependencies:
       '@anthropic-ai/claude-agent-sdk':
