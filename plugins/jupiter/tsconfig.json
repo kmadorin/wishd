@@ -3,7 +3,12 @@
   "compilerOptions": {
     "outDir": "./dist",
     "noEmit": true,
-    "jsx": "preserve"
+    "jsx": "preserve",
+    "baseUrl": "../../apps/web",
+    "paths": {
+      "@/*": ["./*"],
+      "@plugins/*": ["../../plugins/*"]
+    }
   },
   "include": ["**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules", "dist"]
