@@ -253,6 +253,9 @@ importers:
 
   plugins/jupiter:
     dependencies:
+      '@anthropic-ai/claude-agent-sdk':
+        specifier: ^0.2.0
+        version: 0.2.126(zod@4.4.1)
       '@modelcontextprotocol/sdk':
         specifier: ^1.0.0
         version: 1.29.0(zod@4.4.1)
