@@ -212,12 +212,14 @@ export function WishComposer() {
       );
     } catch (err) {
       if (timedOut || (err instanceof Error && err.name === "AbortError")) return;
-      const msg =
+      const rawMsg =
         err instanceof PrepareError
           ? err.message
           : err instanceof Error
             ? err.message
             : "unknown error";
+      // Defensive cap — if the server ever leaks a long body, don't render it raw.
+      const msg = rawMsg.length > 200 ? `${rawMsg.slice(0, 200)}…` : rawMsg;
       ws.appendAgentEvent({ kind: "step", label: `prepare ${s.intent}`, status: "fail", ms: Math.round(performance.now() - tPrepare) });
       ws.failSkeleton(skeletonId, msg);
     } finally {

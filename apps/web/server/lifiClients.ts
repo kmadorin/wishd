@@ -76,7 +76,22 @@ export async function lifiFetch(path: string, options: LiFiFetchOptions): Promis
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Li.Fi ${res.status}: ${text}`);
+    // Try to extract a concise, user-actionable message from the Li.Fi body.
+    // /quote failures often return {message, code, errors:[{overallPath, reason}, ...]}
+    // where the errors array can be 100s of routes; surface only the top-level
+    // message + the first reason. Fall back to truncated raw text.
+    let summary = text;
+    try {
+      const j = JSON.parse(text) as { message?: string; code?: number; errors?: Array<{ reason?: string }> };
+      const top = j.message ?? "";
+      const first = j.errors?.find((e) => typeof e?.reason === "string")?.reason;
+      if (top || first) {
+        summary = first ? `${top} (${first})` : top;
+      }
+    } catch {
+      if (text.length > 240) summary = `${text.slice(0, 240)}…`;
+    }
+    throw new Error(`Li.Fi ${res.status}: ${summary}`);
   }
 
   return res.json();
