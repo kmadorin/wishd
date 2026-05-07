@@ -41,7 +41,10 @@ export function ActionPill(props: ActionPillProps) {
   if (props.variant === "amount") return <AmountPill {...props} />;
 
   const empty = !props.value;
-  const label = props.value ?? props.placeholder ?? "";
+  const matched = props.value
+    ? props.options?.find((o) => o.id === props.value)
+    : undefined;
+  const label = matched?.label ?? props.value ?? props.placeholder ?? "";
   const bg = empty ? "bg-surface-2 text-ink-3" : `${VARIANT_BG[props.variant]} text-ink`;
 
   return (

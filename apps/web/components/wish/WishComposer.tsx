@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useAccount } from "wagmi";
-import { renderSentenceParts, type IntentField, type IntentSchema } from "@wishd/plugin-sdk";
+import { humanizeChain, renderSentenceParts, type IntentField, type IntentSchema } from "@wishd/plugin-sdk";
 import { useWorkspace } from "@/store/workspace";
 import { startStream } from "./EventStream";
 import { StepCard } from "@/components/primitives/StepCard";
@@ -444,7 +444,7 @@ function FieldPill({
       placeholder={field.key}
       ariaLabel={ariaLabelForField(field)}
       iconTicker={field.type === "asset" ? value : undefined}
-      options={field.options.map(optionForValue)}
+      options={field.options.map((v) => optionForValue(v, field.type))}
       open={open}
       onOpenChange={onOpenChange}
       onChange={onChange}
@@ -461,12 +461,13 @@ function pillVariantFor(field: IntentField): ActionPillVariant {
   return "chain";
 }
 
-function optionForValue(v: string): ActionPillOption {
-  return { id: v, label: labelForValue(v) };
+function optionForValue(v: string, fieldType?: IntentField["type"]): ActionPillOption {
+  return { id: v, label: labelForValue(v, fieldType) };
 }
 
-function labelForValue(v: string): string {
+function labelForValue(v: string, fieldType?: IntentField["type"]): string {
   if (v === "ethereum-sepolia") return "Ethereum Sepolia";
+  if (fieldType === "chain" || /^(eip155|solana):/.test(v)) return humanizeChain(v);
   return v;
 }
 
