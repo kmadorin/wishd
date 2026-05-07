@@ -22,6 +22,7 @@
     "@wishd/plugin-compound-v3": "workspace:*",
     "@wishd/plugin-demo-stubs": "workspace:*",
     "@wishd/plugin-jupiter": "workspace:*",
+    "@wishd/plugin-lifi": "workspace:*",
     "@wishd/plugin-sdk": "workspace:*",
     "@wishd/plugin-uniswap": "workspace:*",
     "@wishd/tokens": "workspace:*",
