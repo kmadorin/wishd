@@ -1,6 +1,7 @@
 import type { IntentSchema } from "@wishd/plugin-sdk";
 import { compoundIntents } from "@plugins/compound-v3/intents";
 import { uniswapIntents }  from "@plugins/uniswap/intents";
+import { jupiterIntents }  from "@plugins/jupiter/intents";
 
 export type RegisteredIntent = {
   schema: IntentSchema;
@@ -10,6 +11,7 @@ export type RegisteredIntent = {
 const sources: Array<{ pluginName: string; schemas: IntentSchema[] }> = [
   { pluginName: "compound-v3", schemas: compoundIntents },
   { pluginName: "uniswap",     schemas: uniswapIntents },
+  { pluginName: "jupiter",     schemas: jupiterIntents },
 ];
 
 export const CLIENT_INTENT_REGISTRY: Map<string, RegisteredIntent[]> = (() => {
