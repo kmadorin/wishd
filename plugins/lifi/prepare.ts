@@ -197,6 +197,40 @@ export async function quoteAndBuild(
   const quoteAt = Date.now();
   const staleAfter = quoteAt + 25_000;
 
+  // Best-effort balance read with timeout. Used to gate the Execute CTA.
+  // Default RPC may rate-limit — on error/timeout we leave insufficient=false
+  // (UI still proceeds; tx will revert if truly empty).
+  let balanceAtomic = 0n;
+  let balanceKnown = false;
+  try {
+    const pc = deps.evmPublicClientFor(fromCaip2);
+    const BALANCE_TIMEOUT_MS = 4000;
+    if (isNativeFrom) {
+      balanceAtomic = await Promise.race([
+        pc.getBalance({ address: fromAddress as `0x${string}` }) as Promise<bigint>,
+        new Promise<bigint>((_, reject) =>
+          setTimeout(() => reject(new Error("balance read timeout")), BALANCE_TIMEOUT_MS),
+        ),
+      ]);
+    } else {
+      balanceAtomic = await Promise.race([
+        pc.readContract({
+          address: fromToken as `0x${string}`,
+          abi: erc20Abi,
+          functionName: "balanceOf",
+          args: [fromAddress as `0x${string}`],
+        }) as Promise<bigint>,
+        new Promise<bigint>((_, reject) =>
+          setTimeout(() => reject(new Error("balance read timeout")), BALANCE_TIMEOUT_MS),
+        ),
+      ]);
+    }
+    balanceKnown = true;
+  } catch {
+    balanceKnown = false;
+  }
+  const insufficient = balanceKnown && balanceAtomic < BigInt(amountAtomic);
+
   // Compute fee/gas totals
   const totalFeeUSD = estimate.feeCosts
     .filter((f) => f.included)
@@ -228,8 +262,8 @@ export async function quoteAndBuild(
     config,
     quote: quoteEstimate,
     quoteAt,
-    insufficient: false, // best-effort; caller can update
-    balance: "0",        // best-effort; caller can update
+    insufficient,
+    balance: balanceKnown ? balanceAtomic.toString() : "0",
     routeNote,
     totalFeeUSD,
     totalGasUSD,

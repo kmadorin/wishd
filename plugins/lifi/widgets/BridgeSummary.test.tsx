@@ -100,7 +100,8 @@ describe("BridgeSummary", () => {
   it("renders route note from steps", () => {
     const prepared = makePrepared();
     render(<BridgeSummary prepared={prepared} onExecute={onExecute} onRefresh={onRefresh} />);
-    expect(screen.getByText(/Across/i)).toBeInTheDocument();
+    // "Across" appears in route stat + safety panel summary; both are legit.
+    expect(screen.getAllByText(/Across/i).length).toBeGreaterThan(0);
   });
 
   it("renders receive min amount", () => {
