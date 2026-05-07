@@ -48,3 +48,19 @@ export function validateSwapValues(v: { amount: string; assetIn: string; assetOu
   if (v.assetIn === v.assetOut) throw new Error("pick two different assets");
   if (!/^[0-9]+(?:\.[0-9]+)?$/.test(v.amount)) throw new Error(`invalid amount: ${v.amount}`);
 }
+
+export type AssetSide = "in" | "out";
+export type AssetPair = { assetIn: string; assetOut: string };
+
+export function applyAssetChange(
+  side: AssetSide,
+  next: string,
+  prev: AssetPair,
+): AssetPair {
+  if (side === "in") {
+    if (next === prev.assetOut) return { assetIn: next, assetOut: prev.assetIn };
+    return { assetIn: next, assetOut: prev.assetOut };
+  }
+  if (next === prev.assetIn) return { assetIn: prev.assetOut, assetOut: next };
+  return { assetIn: prev.assetIn, assetOut: next };
+}

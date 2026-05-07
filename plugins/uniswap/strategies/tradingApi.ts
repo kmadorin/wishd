@@ -1,9 +1,11 @@
 // plugins/uniswap/strategies/tradingApi.ts
 import type { Hex } from "viem";
+import { formatUnits } from "viem";
 import type { SwapConfig, SwapQuote, StrategyCall } from "../types";
 import { SwapError } from "../types";
 import { fetchWithRetry, type RetryOpts } from "./fetchWithRetry";
 import { validateCall, ensureHexValue } from "./validateCall";
+import { resolveAsset } from "../resolveAsset";
 
 const BASE = "https://trade-api.gateway.uniswap.org/v1";
 const ETH = "0x0000000000000000000000000000000000000000";
@@ -52,10 +54,13 @@ export function tradingApiStrategy(opts: TradingApiOpts) {
     if (j.routing !== "CLASSIC" && j.routing !== "WRAP" && j.routing !== "UNWRAP") {
       throw new SwapError("unsupported_routing", j.routing ?? "missing");
     }
+    const decOut = resolveAsset(cfg.chainId, cfg.assetOut).decimals;
+    const rawOut    = j.quote?.output?.amount ?? "0";
+    const rawOutMin = j.quote?.minOutput?.amount ?? rawOut;
     return {
       amountIn:     j.quote?.input?.amount ?? cfg.amountIn,
-      amountOut:    j.quote?.output?.amount ?? "0",
-      amountOutMin: j.quote?.minOutput?.amount ?? j.quote?.output?.amount ?? "0",
+      amountOut:    formatUnits(BigInt(rawOut), decOut),
+      amountOutMin: formatUnits(BigInt(rawOutMin), decOut),
       rate:         j.quote?.rate ?? "",
       route:        j.quote?.routeString ?? "Uniswap (Trading API)",
       gasFeeUSD:    j.quote?.gasFeeUSD,

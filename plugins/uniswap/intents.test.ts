@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { uniswapIntents, validateSwapValues, CHAIN_ID_BY_SLUG, SUPPORTED_CHAIN_SLUGS } from "./intents";
+import { uniswapIntents, validateSwapValues, CHAIN_ID_BY_SLUG, SUPPORTED_CHAIN_SLUGS, applyAssetChange } from "./intents";
 
 describe("uniswapIntents", () => {
   it("exposes uniswap.swap with assetIn/assetOut/amount/chain", () => {
@@ -42,5 +42,32 @@ describe("uniswapIntents", () => {
   it("accepts CAIP-2 chain values", () => {
     expect(() => validateSwapValues({ amount: "1", assetIn: "ETH", assetOut: "USDC", chain: "eip155:8453" }))
       .not.toThrow();
+  });
+});
+
+describe("applyAssetChange", () => {
+  it("sets in side normally when no collision", () => {
+    expect(applyAssetChange("in", "WETH", { assetIn: "ETH", assetOut: "USDC" }))
+      .toEqual({ assetIn: "WETH", assetOut: "USDC" });
+  });
+
+  it("sets out side normally when no collision", () => {
+    expect(applyAssetChange("out", "DAI", { assetIn: "ETH", assetOut: "USDC" }))
+      .toEqual({ assetIn: "ETH", assetOut: "DAI" });
+  });
+
+  it("auto-flips when in == prev.out", () => {
+    expect(applyAssetChange("in", "USDC", { assetIn: "ETH", assetOut: "USDC" }))
+      .toEqual({ assetIn: "USDC", assetOut: "ETH" });
+  });
+
+  it("auto-flips when out == prev.in", () => {
+    expect(applyAssetChange("out", "ETH", { assetIn: "ETH", assetOut: "USDC" }))
+      .toEqual({ assetIn: "USDC", assetOut: "ETH" });
+  });
+
+  it("no-op when picking the same value already on that side", () => {
+    expect(applyAssetChange("in", "ETH", { assetIn: "ETH", assetOut: "USDC" }))
+      .toEqual({ assetIn: "ETH", assetOut: "USDC" });
   });
 });

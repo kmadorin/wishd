@@ -360,36 +360,89 @@ export function SwapExecute(props: SwapExecuteProps) {
 
   if (phase === "confirmed" && txHash) {
     return (
-      <SuccessCard
-        title="swap complete ✦"
-        sub={`swapped ${props.initialQuote.amountIn} ${assetIn} → ${assetOut}`}
-        summary={[
-          { k: "you paid", v: `${props.initialQuote.amountIn} ${assetIn}` },
-          { k: "you received", v: `~${props.initialQuote.amountOut} ${assetOut}` },
-          { k: "chain", v: String(configChainId) },
-          {
-            k: "tx",
-            v: (
-              <a
-                className="underline"
-                target="_blank"
-                rel="noreferrer"
-                href={`https://etherscan.io/tx/${txHash}`}
-              >
-                {txHash.slice(0, 10)}…{txHash.slice(-8)}
-              </a>
-            ),
-          },
-        ]}
-        primaryAction={{
-          label: "make another wish",
-          onClick: () => resetWorkspace(),
-        }}
-        secondaryAction={{
-          label: "view portfolio",
-          onClick: () => alert("portfolio coming soon"),
-        }}
-      />
+      <div className="flex flex-col gap-5">
+        <SuccessCard
+          title="swap complete ✦"
+          sub={`swapped ${props.initialQuote.amountIn} ${assetIn} → ${assetOut}`}
+          summary={[
+            { k: "you paid", v: `${props.initialQuote.amountIn} ${assetIn}` },
+            { k: "you received", v: `~${props.initialQuote.amountOut} ${assetOut}` },
+            { k: "chain", v: String(configChainId) },
+            {
+              k: "tx",
+              v: (
+                <a
+                  className="underline"
+                  target="_blank"
+                  rel="noreferrer"
+                  href={`https://etherscan.io/tx/${txHash}`}
+                >
+                  {txHash.slice(0, 10)}…{txHash.slice(-8)}
+                </a>
+              ),
+            },
+          ]}
+          primaryAction={{
+            label: "make another wish",
+            onClick: () => resetWorkspace(),
+          }}
+          secondaryAction={{
+            label: "view portfolio",
+            onClick: () => alert("portfolio coming soon"),
+          }}
+        />
+
+        {/* Post-swap automation suggestions (a la step 04). */}
+        <div className="border-[1.5px] border-dashed border-ink rounded-2xl bg-bg p-4">
+          <div className="flex items-baseline gap-2 mb-3">
+            <span className="font-mono text-[9px] tracking-[0.18em] uppercase text-ink-3 border border-rule rounded-sm px-1.5 py-0.5">
+              step 04
+            </span>
+            <span className="font-hand text-[18px] font-bold">automate this</span>
+          </div>
+          <p className="text-xs text-ink-3 mb-3">
+            now that the swap landed, automate the follow-up so you don&apos;t have to babysit it.
+          </p>
+
+          {[
+            {
+              title: "DCA back",
+              desc: `Drip ${assetOut} back into ${assetIn} on a schedule.`,
+              why: `If ${assetOut} swings up you re-enter at better levels without watching the chart.`,
+              featured: true,
+            },
+            {
+              title: "Range alert",
+              desc: `Notify when ${assetIn}/${assetOut} price moves ±15%.`,
+              why: "Free re-entry signal — we ping, you swap back at a better rate.",
+            },
+            {
+              title: `Earn on idle ${assetOut}`,
+              desc: `Auto-supply received ${assetOut} into the highest-APY market.`,
+              why: `Received tokens sit idle in the wallet — supplying earns ~3% APY on autopilot.`,
+            },
+          ].map((offer) => (
+            <div
+              key={offer.title}
+              className={[
+                "flex items-start gap-2 p-2.5 rounded-sm border border-rule mb-1.5 text-sm",
+                offer.featured ? "bg-accent-2 border-accent" : "bg-surface-2",
+              ].join(" ")}
+            >
+              <div className="flex-1">
+                <div className="font-semibold text-ink">{offer.title}</div>
+                <div className="text-xs text-ink-3 mt-0.5">{offer.desc}</div>
+                <div className="text-xs text-ink-2 mt-1 italic">why: {offer.why}</div>
+              </div>
+              {offer.featured && (
+                <span className="font-mono text-[9px] bg-accent border border-ink rounded-sm px-1.5 py-0.5 flex-shrink-0">
+                  featured
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
     );
   }
 

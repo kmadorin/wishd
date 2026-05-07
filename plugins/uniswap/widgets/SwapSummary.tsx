@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { WidgetCard } from "../../../apps/web/components/primitives/WidgetCard";
 import { AICheckPanel } from "../../../apps/web/components/primitives/AICheckPanel";
-import { StepCard } from "../../../apps/web/components/primitives/StepCard";
 import { AssetPicker } from "../../../apps/web/components/wish/AssetPicker";
 import { useWorkspace } from "../../../apps/web/store/workspace";
+import { applyAssetChange } from "../intents";
+import { useBalances } from "../../../apps/web/lib/useBalances";
 import type { SwapQuote, SwapConfig, Call, KeeperOffer } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -60,18 +61,23 @@ export type SwapSummaryProps = {
 // ---------------------------------------------------------------------------
 
 export function SwapSummary(props: SwapSummaryProps) {
-  const { config, initialQuote, initialQuoteAt, approvalCall, balance, keeperOffers, summaryId } = props;
+  const { config, initialQuote, initialQuoteAt, approvalCall, keeperOffers, summaryId } = props;
 
   const [amountIn, setAmountIn] = useState(config.amountIn);
   const [assetIn, setAssetIn] = useState(config.assetIn);
   const [assetOut, setAssetOut] = useState(config.assetOut);
   const [slippageBps, setSlippageBps] = useState(config.slippageBps);
   const [submitting, setSubmitting] = useState(false);
+  const [editPending, setEditPending] = useState(false);
+  const [openPicker, setOpenPicker] = useState<"in" | "out" | null>(null);
 
   const debouncedAmount = useDebounce(amountIn, 300);
   const executing = useWorkspace((s) => s.executing);
 
   const { chainId, swapper, tokenIn, tokenOut } = config;
+
+  const liveBalances = useBalances({ chainId, address: swapper, tokens: [assetIn, assetOut] });
+  const balance = liveBalances.balances[assetIn] ?? props.balance;
 
   const quoteQuery = useQuery<SwapQuote>({
     queryKey: ["uniswap.quote", chainId, tokenIn, tokenOut, debouncedAmount, swapper, slippageBps, assetIn, assetOut],
@@ -108,13 +114,38 @@ export function SwapSummary(props: SwapSummaryProps) {
   });
 
   const quote = quoteQuery.data ?? initialQuote;
-  const insufficient = props.insufficient && amountIn === config.amountIn;
+  // Recompute insufficient from live balance + amount; the server-prepared
+  // props.insufficient is keyed to the initial (assetIn, amountIn) pair and
+  // becomes stale after any local edit (token flip, amount change).
+  const insufficient = (() => {
+    const b = parseFloat(balance);
+    const a = parseFloat(amountIn);
+    if (!Number.isFinite(b) || !Number.isFinite(a)) return false;
+    return a > b;
+  })();
   const ctaDisabled = submitting || executing || insufficient || !quoteQuery.data || !!quoteQuery.error;
 
+  function setAssetInGuarded(next: string) {
+    setEditPending(true);
+    const updated = applyAssetChange("in", next, { assetIn, assetOut });
+    setAssetIn(updated.assetIn);
+    setAssetOut(updated.assetOut);
+  }
+  function setAssetOutGuarded(next: string) {
+    setEditPending(true);
+    const updated = applyAssetChange("out", next, { assetIn, assetOut });
+    setAssetIn(updated.assetIn);
+    setAssetOut(updated.assetOut);
+  }
   function handleFlip() {
+    setEditPending(true);
     setAssetIn(assetOut);
     setAssetOut(assetIn);
   }
+
+  useEffect(() => {
+    if (quoteQuery.data && !quoteQuery.isFetching) setEditPending(false);
+  }, [quoteQuery.data, quoteQuery.isFetching]);
 
   function handleExecute() {
     if (ctaDisabled) return;
@@ -127,11 +158,21 @@ export function SwapSummary(props: SwapSummaryProps) {
           context: {
             summaryId,
             prepared: {
-              ...config,
-              ...quoteQuery.data,
+              config: {
+                ...config,
+                assetIn,
+                assetOut,
+                amountIn: amountIn,
+                slippageBps,
+              },
+              initialQuote: quoteQuery.data ?? initialQuote,
+              initialQuoteAt: Date.now(),
               approvalCall,
               balance,
+              insufficient,
+              liquidityNote: props.liquidityNote,
               keeperOffers,
+              summaryId,
             },
           },
         },
@@ -143,12 +184,7 @@ export function SwapSummary(props: SwapSummaryProps) {
   const txCount = approvalCall ? "2 TX" : "1 TX";
 
   return (
-    <StepCard
-      step="STEP 02"
-      title="your swap, materialized"
-      sub="tweak amounts here. AI re-checks live."
-    >
-      <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3">
         {/* Sepolia banner */}
         {chainId === 11155111 && (
           <div className="rounded-sm bg-warn-2 border border-warn px-3 py-2 text-sm text-ink-2">
@@ -178,8 +214,11 @@ export function SwapSummary(props: SwapSummaryProps) {
                 <AssetPicker
                   chainId={chainId}
                   value={assetIn}
-                  onChange={setAssetIn}
-                  ariaLabel="select token in"
+                  onChange={setAssetInGuarded}
+                  address={swapper}
+                  variant="from"
+                  open={openPicker === "in"}
+                  onOpenChange={(o) => setOpenPicker(o ? "in" : null)}
                 />
               </div>
             </div>
@@ -205,8 +244,11 @@ export function SwapSummary(props: SwapSummaryProps) {
                 <AssetPicker
                   chainId={chainId}
                   value={assetOut}
-                  onChange={setAssetOut}
-                  ariaLabel="select token out"
+                  onChange={setAssetOutGuarded}
+                  address={swapper}
+                  variant="to"
+                  open={openPicker === "out"}
+                  onOpenChange={(o) => setOpenPicker(o ? "out" : null)}
                 />
               </div>
             </div>
@@ -220,7 +262,7 @@ export function SwapSummary(props: SwapSummaryProps) {
           {/* Stats row */}
           <WidgetCard.Stats
             items={[
-              { k: "rate", v: quote.rate ? `${quote.rate} ${assetOut}/${assetIn}` : "—" },
+              { k: "rate", v: quote.rate || "—" },
               { k: "min received", v: quote.amountOutMin ? `${quote.amountOutMin} ${assetOut}` : "—" },
               { k: "route", v: quote.route || "—" },
               { k: "network fee", v: quote.gasFeeUSD ? `~$${quote.gasFeeUSD}` : (quote.networkFee ?? "—") },
@@ -300,34 +342,48 @@ export function SwapSummary(props: SwapSummaryProps) {
           ]}
         />
 
-        {/* Keeper offers */}
-        {keeperOffers.length > 0 && (
-          <div className="border-[1.5px] border-dashed border-ink rounded-2xl bg-bg p-4">
-            <div className="font-mono text-[9px] tracking-[0.12em] uppercase text-ink-3 mb-2">
-              better execution options
-            </div>
-            {keeperOffers.map((offer, i) => (
-              <div
-                key={i}
-                className={[
-                  "flex items-start gap-2 p-2.5 rounded-sm border border-rule mb-1.5 text-sm",
-                  offer.featured ? "bg-accent-2 border-accent" : "bg-surface-2",
-                ].join(" ")}
-              >
-                <div className="flex-1">
-                  <div className="font-semibold text-ink">{offer.title}</div>
-                  <div className="text-xs text-ink-3 mt-0.5">{offer.desc}</div>
-                </div>
-                {offer.featured && (
-                  <span className="font-mono text-[9px] bg-accent border border-ink rounded-sm px-1.5 py-0.5 flex-shrink-0">
-                    featured
-                  </span>
-                )}
+        {/* NL summary — hidden while user is making edits */}
+        {editPending ? (
+          <div className="font-mono text-[11px] text-ink-3 px-2">edit pending — re-running checks…</div>
+        ) : null}
+
+        {/* Keeper offers — only for non-trivial swaps */}
+        {(() => {
+          const a = parseFloat(amountIn);
+          const isStableIn = ["USDC", "USDT", "DAI"].includes(assetIn);
+          const minAmount = isStableIn ? 50 : 0.05;
+          const showOffers = Number.isFinite(a) && a >= minAmount && keeperOffers.length > 0;
+          if (!showOffers) return null;
+          return (
+            <div className="border-[1.5px] border-dashed border-ink rounded-2xl bg-bg p-4">
+              <div className="font-mono text-[9px] tracking-[0.12em] uppercase text-ink-3 mb-2">
+                better execution options
               </div>
-            ))}
-          </div>
-        )}
+              {keeperOffers.map((offer, i) => (
+                <div
+                  key={i}
+                  className={[
+                    "flex items-start gap-2 p-2.5 rounded-sm border border-rule mb-1.5 text-sm",
+                    offer.featured ? "bg-accent-2 border-accent" : "bg-surface-2",
+                  ].join(" ")}
+                >
+                  <div className="flex-1">
+                    <div className="font-semibold text-ink">{offer.title}</div>
+                    <div className="text-xs text-ink-3 mt-0.5">{offer.desc}</div>
+                    {offer.why && (
+                      <div className="text-xs text-ink-2 mt-1 italic">why: {offer.why}</div>
+                    )}
+                  </div>
+                  {offer.featured && (
+                    <span className="font-mono text-[9px] bg-accent border border-ink rounded-sm px-1.5 py-0.5 flex-shrink-0">
+                      featured
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </div>
-    </StepCard>
   );
 }

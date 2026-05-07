@@ -69,3 +69,64 @@ describe("tradingApiStrategy", () => {
     await expect(s.swap({ config: { chainId: 1, swapper: "0x000000000000000000000000000000000000bEEF" as any, tokenIn: "0x0000000000000000000000000000000000000000" as any, tokenOut: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as any, amountIn: "1", slippageBps: 50, assetIn: "ETH", assetOut: "USDC", strategyTag: "trading-api" } as any, quote: { raw: {}, amountIn: "1" } as any })).rejects.toThrow(/calldata|empty/i);
   });
 });
+
+import type { SwapConfig } from "../types";
+
+describe("tradingApi quote decimals", () => {
+  function fakeFetch(response: unknown): typeof fetch {
+    return (async () => new Response(JSON.stringify(response), { status: 200 })) as typeof fetch;
+  }
+
+  const ethToUsdcCfg: SwapConfig = {
+    chainId: 1,
+    swapper: "0x0000000000000000000000000000000000000001",
+    tokenIn:  "0x0000000000000000000000000000000000000000", // ETH
+    tokenOut: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC mainnet
+    assetIn: "ETH", assetOut: "USDC",
+    amountIn: "100000000000000000", // 0.1 ETH in wei
+    slippageBps: 50,
+    strategyTag: "trading-api",
+  };
+
+  it("formats amountOut using assetOut decimals (USDC = 6)", async () => {
+    // Trading-API returns raw smallest-unit amounts.
+    // 300 USDC = 300_000_000 (6 decimals).
+    const apiResponse = {
+      routing: "CLASSIC",
+      quote: {
+        input:  { amount: "100000000000000000" },
+        output: { amount: "300000000" },
+        minOutput: { amount: "298500000" },
+        rate: "1 ETH = 3000 USDC",
+        routeString: "ETH > USDC",
+      },
+    };
+    const strat = tradingApiStrategy({ apiKey: "k", fetchImpl: fakeFetch(apiResponse) });
+    const q = await strat.quote(ethToUsdcCfg);
+    expect(q.amountOut).toBe("300");
+    expect(q.amountOutMin).toBe("298.5");
+  });
+
+  it("formats amountOut using assetOut decimals (ETH = 18)", async () => {
+    const usdcToEthCfg: SwapConfig = {
+      ...ethToUsdcCfg,
+      tokenIn:  ethToUsdcCfg.tokenOut,
+      tokenOut: ethToUsdcCfg.tokenIn,
+      assetIn: "USDC", assetOut: "ETH",
+      amountIn: "100000000", // 100 USDC raw
+    };
+    // 0.0333 ETH out = 33300000000000000 wei.
+    const apiResponse = {
+      routing: "CLASSIC",
+      quote: {
+        input:  { amount: "100000000" },
+        output: { amount: "33300000000000000" },
+        minOutput: { amount: "33133500000000000" },
+      },
+    };
+    const strat = tradingApiStrategy({ apiKey: "k", fetchImpl: fakeFetch(apiResponse) });
+    const q = await strat.quote(usdcToEthCfg);
+    expect(q.amountOut).toBe("0.0333");
+    expect(q.amountOutMin).toBe("0.0331335");
+  });
+});
