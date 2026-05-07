@@ -9,8 +9,10 @@ import {
 import { prepareSwap } from "@plugins/uniswap/prepare";
 import { CHAIN_ID_BY_SLUG, CAIP2_BY_SLUG } from "@plugins/uniswap/intents";
 import { prepareSwap as prepareJupiterSwap } from "@plugins/jupiter/prepare";
+import { prepareBridgeSwap } from "@plugins/lifi/prepare";
 import { uniswapStrategies, publicClientFor } from "./uniswapClients";
 import { solanaRpcFor } from "./jupiterClients";
+import { lifiFetch, evmPublicClientFor } from "./lifiClients";
 import { getIntentSchema } from "./intentRegistry";
 import { SOLANA_MAINNET, evmChainId, isEvmCaip2 } from "@wishd/plugin-sdk";
 
@@ -72,6 +74,37 @@ export async function dispatchIntent(
         type: widgetType,
         slot: "flow",
         props: rest as Record<string, unknown>,
+      },
+    };
+  }
+
+  if (intent === "lifi.bridge-swap") {
+    const fromAddress = String(input.body.fromAddress ?? input.body.address ?? "");
+    if (!fromAddress.startsWith("0x")) throw new Error("fromAddress required (0x...)");
+    const toAddress = String(input.body.toAddress ?? input.body.swapper ?? fromAddress);
+    const prepared = await prepareBridgeSwap(
+      {
+        amount:   requireAmount(input.body),
+        assetIn:  String(input.body.assetIn),
+        fromChain: String(input.body.fromChain),
+        assetOut: String(input.body.assetOut),
+        toChain:  String(input.body.toChain),
+        slippage: typeof input.body.slippage === "string" ? input.body.slippage : "0.5%",
+        fromAddress,
+        toAddress,
+      },
+      { lifiFetch, evmPublicClientFor: evmPublicClientFor as never },
+    );
+    const preparedJson = JSON.parse(
+      JSON.stringify(prepared, (_k, v) => (typeof v === "bigint" ? v.toString() : v)),
+    );
+    return {
+      prepared: preparedJson,
+      widget: {
+        id: newWidgetId(),
+        type: schema.widget,
+        slot: "flow",
+        props: { id: newWidgetId(), prepared: preparedJson },
       },
     };
   }

@@ -2,6 +2,7 @@ import type { IntentSchema } from "@wishd/plugin-sdk";
 import { compoundIntents } from "@plugins/compound-v3/intents";
 import { uniswapIntents }  from "@plugins/uniswap/intents";
 import { jupiterIntents }  from "@plugins/jupiter/intents";
+import { lifiIntents }     from "@plugins/lifi/intents";
 
 export type RegisteredIntent = {
   schema: IntentSchema;
@@ -12,6 +13,7 @@ const sources: Array<{ pluginName: string; schemas: IntentSchema[] }> = [
   { pluginName: "compound-v3", schemas: compoundIntents },
   { pluginName: "uniswap",     schemas: uniswapIntents },
   { pluginName: "jupiter",     schemas: jupiterIntents },
+  { pluginName: "lifi",        schemas: lifiIntents },
 ];
 
 export const CLIENT_INTENT_REGISTRY: Map<string, RegisteredIntent[]> = (() => {

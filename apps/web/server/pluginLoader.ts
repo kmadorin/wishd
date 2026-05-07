@@ -1,21 +1,33 @@
 import { compoundV3 } from "@wishd/plugin-compound-v3";
 import { uniswap }    from "@wishd/plugin-uniswap";
 import { demoStubs }  from "@wishd/plugin-demo-stubs";
-import { jupiter, buildRefreshHandler } from "@wishd/plugin-jupiter";
+import { jupiter, buildRefreshHandler as buildJupiterRefreshHandler } from "@wishd/plugin-jupiter";
+import { lifi, buildRefreshHandler as buildLifiRefreshHandler, setServerDeps as setLifiServerDeps } from "@wishd/plugin-lifi";
 import type { Plugin } from "@wishd/plugin-sdk";
 import { registerPluginTool } from "@wishd/plugin-sdk/routes";
 import { solanaRpcFor } from "./jupiterClients";
+import { lifiFetch, evmPublicClientFor } from "./lifiClients";
 
 let registered = false;
-function registerJupiterRoutes(): void {
+function registerPluginRoutes(): void {
   if (registered) return;
   registered = true;
-  const handler = buildRefreshHandler();
+
+  // Jupiter refresh handler (uses Jupiter REST directly, no extra deps needed)
+  const jupiterHandler = buildJupiterRefreshHandler();
   registerPluginTool("jupiter", "refresh_swap", async (body) => {
     void solanaRpcFor; // server has access if needed; refresh runs Jupiter REST only
-    const prepared = await handler(body);
+    const prepared = await jupiterHandler(body);
     // Coerce bigints (lastValidBlockHeight) to strings for JSON.stringify route response.
     return JSON.parse(JSON.stringify(prepared, (_k, v) => (typeof v === "bigint" ? v.toString() : v)));
+  });
+
+  // Li.Fi: inject real server deps so the MCP server (createLifiMcp) and the
+  // refresh handler both resolve real impls at call time.
+  setLifiServerDeps({ lifiFetch, evmPublicClientFor });
+  const lifiHandler = buildLifiRefreshHandler({ lifiFetch, evmPublicClientFor });
+  registerPluginTool("lifi", "refresh_quote", async (body) => {
+    return lifiHandler(body);
   });
 }
 
@@ -27,8 +39,8 @@ export type LoadedPlugins = {
 };
 
 export async function loadPlugins(): Promise<LoadedPlugins> {
-  registerJupiterRoutes();
-  const plugins: Plugin[] = [compoundV3, uniswap, demoStubs, jupiter];
+  registerPluginRoutes();
+  const plugins: Plugin[] = [compoundV3, uniswap, demoStubs, jupiter, lifi];
   const widgetTypes = plugins.flatMap((p) => Object.keys(p.widgets));
   const mcpNames = plugins.flatMap((p) => p.manifest.provides.mcps);
   const allowedTools = ["mcp__widget__*", "mcp__keeperhub__*", "mcp__wishd_keepers__*", ...mcpNames.map((n) => `mcp__${n}__*`)];
