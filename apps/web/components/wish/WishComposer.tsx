@@ -32,7 +32,7 @@ const CHIPS: Array<{ label: string; intent: string; values: Record<string, strin
   },
 ];
 
-const SKELETON_TIMEOUT_MS = 5000;
+const SKELETON_TIMEOUT_MS = 15000;
 
 function newSkeletonId(): string {
   return `s_${Math.random().toString(36).slice(2, 10)}`;
@@ -72,10 +72,13 @@ export function WishComposer() {
   }
 
   function buildSubmitBody(s: IntentSchema, vs: Record<string, string>): Record<string, unknown> {
-    if (isSvmIntent(s)) {
-      const swapper = solana.wallet?.account?.address;
-      return { ...vs, swapper, address: account.address };
-    }
+    const swapper = solana.wallet?.account?.address;
+    if (isSvmIntent(s)) return { ...vs, swapper, address: account.address };
+    // Cross-chain (e.g. lifi.bridge-swap with SVM destination): include both.
+    const hasSvmField = s.fields.some(
+      (f) => f.type === "chain" && "options" in f && (f.options as string[]).some(isSvmCaip2),
+    );
+    if (hasSvmField) return { ...vs, swapper, address: account.address, fromAddress: account.address, toAddress: swapper };
     return { ...vs, address: account.address };
   }
 

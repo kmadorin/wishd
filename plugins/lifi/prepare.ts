@@ -59,9 +59,16 @@ export async function quoteAndBuild(
   const fromToken = extractAddress(assetInCaip19);
   const toToken = extractAddress(assetOutCaip19);
 
-  // Parse numeric chain IDs for Li.Fi (Li.Fi accepts numeric chain IDs)
-  const fromChainId = fromCaip2.startsWith("eip155:") ? parseInt(fromCaip2.slice("eip155:".length), 10) : fromCaip2;
-  const toChainId = toCaip2.startsWith("eip155:") ? parseInt(toCaip2.slice("eip155:".length), 10) : toCaip2;
+  // Map CAIP-2 → Li.Fi chain id. Li.Fi uses numeric IDs for EVM and a fixed
+  // numeric ID 1151111081099710 for Solana mainnet.
+  const LIFI_SOLANA_CHAIN_ID = 1151111081099710;
+  const toLifiChainId = (caip2: string): number | string => {
+    if (caip2.startsWith("eip155:")) return parseInt(caip2.slice("eip155:".length), 10);
+    if (caip2.startsWith("solana:")) return LIFI_SOLANA_CHAIN_ID;
+    return caip2;
+  };
+  const fromChainId = toLifiChainId(fromCaip2);
+  const toChainId = toLifiChainId(toCaip2);
 
   // Fetch Li.Fi quote
   const quoteJson = await deps.lifiFetch("/quote", {
