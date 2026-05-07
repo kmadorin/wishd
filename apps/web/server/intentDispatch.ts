@@ -7,12 +7,12 @@ import {
   type PreparedWithdraw,
 } from "@plugins/compound-v3/prepare";
 import { prepareSwap } from "@plugins/uniswap/prepare";
-import { CHAIN_ID_BY_SLUG } from "@plugins/uniswap/intents";
+import { CHAIN_ID_BY_SLUG, CAIP2_BY_SLUG } from "@plugins/uniswap/intents";
 import { prepareSwap as prepareJupiterSwap } from "@plugins/jupiter/prepare";
 import { uniswapStrategies, publicClientFor } from "./uniswapClients";
 import { solanaRpcFor } from "./jupiterClients";
 import { getIntentSchema } from "./intentRegistry";
-import { SOLANA_MAINNET } from "@wishd/plugin-sdk";
+import { SOLANA_MAINNET, evmChainId, isEvmCaip2 } from "@wishd/plugin-sdk";
 
 export type DispatchInput = {
   body: Record<string, unknown>;
@@ -116,9 +116,16 @@ export async function dispatchIntent(
   const user = requireAddress(input.body);
 
   if (intent === "uniswap.swap") {
-    const chainSlug = String(input.body.chain ?? "");
-    const chainId = CHAIN_ID_BY_SLUG[chainSlug];
-    if (!chainId) throw new Error(`unsupported chain: ${chainSlug}`);
+    const raw = String(input.body.chain ?? "");
+    // Accept either CAIP-2 ("eip155:1") or legacy slug ("ethereum-sepolia").
+    const chainId = isEvmCaip2(raw)
+      ? evmChainId(raw)
+      : CHAIN_ID_BY_SLUG[raw];
+    if (!chainId) throw new Error(`unsupported chain: ${raw}`);
+    // prepareSwap still expects the legacy slug; reverse-map from CAIP-2 if needed.
+    const chainSlug = CHAIN_ID_BY_SLUG[raw]
+      ? raw
+      : Object.entries(CAIP2_BY_SLUG).find(([, c]) => c === raw)?.[0] ?? raw;
     const slippageBps = typeof input.body.slippageBps === "number" ? input.body.slippageBps : 50;
     const prepared = await prepareSwap({
       values: {
