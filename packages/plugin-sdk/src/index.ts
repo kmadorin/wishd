@@ -176,6 +176,7 @@ export { isPlaceholder } from "./observation";
 export * from "./caip";
 export { explorerTxUrl, explorerAddressUrl, registerExplorer } from "./explorers";
 export type { ExplorerEntry } from "./explorers";
+export { useEmit, useEmitStore } from "./client/emit";
 
 export type Plugin = {
   manifest: Manifest;

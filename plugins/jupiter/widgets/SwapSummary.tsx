@@ -1,7 +1,6 @@
 "use client";
 
-import { humanizeChain, SOLANA_MAINNET } from "@wishd/plugin-sdk";
-import { useEmit } from "@wishd/plugin-sdk/client/emit";
+import { humanizeChain, SOLANA_MAINNET, useEmit } from "@wishd/plugin-sdk";
 import { WidgetCard } from "../../../apps/web/components/primitives/WidgetCard";
 import type { JupiterSwapPrepared } from "../types";
 
