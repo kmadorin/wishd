@@ -5,7 +5,8 @@ import { getNative, getTokens } from "@wishd/tokens";
 import { tokenIconClass, tokenSymbol } from "@/lib/tokenIcons";
 import { useBalances } from "@/lib/useBalances";
 
-type Option = { symbol: string; name: string };
+export type AssetPickerOption = { symbol: string; name: string };
+type Option = AssetPickerOption;
 
 function options(chainId: number): Option[] {
   const out: Option[] = [];
@@ -32,13 +33,23 @@ export type AssetPickerProps = {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   variant?: "from" | "to";
+  /** When provided, overrides the default EVM token discovery (getNative + getTokens). */
+  tokens?: AssetPickerOption[];
+  /** When provided, overrides the live useBalances lookup. */
+  balances?: Record<string, string>;
 };
 
 export function AssetPicker(props: AssetPickerProps) {
-  const { chainId, value, onChange, address, variant = "from" } = props;
-  const all = useMemo(() => options(chainId), [chainId]);
+  const { chainId, value, onChange, address, variant = "from", tokens, balances: balancesProp } = props;
+  const all = useMemo(() => tokens ?? options(chainId), [tokens, chainId]);
   const tokenSymbols = useMemo(() => all.map((o) => o.symbol), [all]);
-  const { balances, isLoading } = useBalances({ chainId, address, tokens: tokenSymbols });
+  const liveBalances = useBalances({
+    chainId: balancesProp ? undefined : chainId,
+    address: balancesProp ? undefined : address,
+    tokens: balancesProp ? [] : tokenSymbols,
+  });
+  const balances = balancesProp ?? liveBalances.balances;
+  const isLoading = balancesProp ? false : liveBalances.isLoading;
 
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = props.open !== undefined && props.onOpenChange !== undefined;

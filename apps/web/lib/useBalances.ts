@@ -4,7 +4,7 @@ import useSWR from "swr";
 export type BalancesMap = Record<string, string>;
 
 export type UseBalancesArgs = {
-  chainId: number;
+  chainId: number | undefined;
   address: `0x${string}` | string | undefined;
   tokens: string[];
 };
@@ -21,7 +21,7 @@ export function useBalances({ chainId, address, tokens }: UseBalancesArgs): {
   error: Error | undefined;
 } {
   const sortedTokens = [...tokens].sort().join(",");
-  const key = address && tokens.length > 0
+  const key = chainId && address && tokens.length > 0
     ? `/api/wallet/balances?address=${address}&chainId=${chainId}&tokens=${sortedTokens}`
     : null;
   const { data, error, isLoading } = useSWR(key, fetcher, {
