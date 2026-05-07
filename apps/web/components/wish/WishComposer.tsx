@@ -347,6 +347,15 @@ export function WishComposer() {
                       next &&
                       next.kind === "field" &&
                       (next as { kind: "field"; key: string }).key === "assetOut";
+                    // Hide the connector that precedes a hidden field.
+                    if (
+                      schema.intent === "lifi.bridge-swap" &&
+                      next &&
+                      next.kind === "field" &&
+                      (next as { kind: "field"; key: string }).key === "slippage"
+                    ) {
+                      return null;
+                    }
                     return (
                       <SentenceConnector key={`connector-${i}`}>
                         {part.text}
@@ -357,24 +366,69 @@ export function WishComposer() {
 
                   const field = schema.fields.find((f) => f.key === part.key);
                   if (!field) return null;
+                  // lifi: hide slippage from the composer (defaults to 0.5% server-side).
+                  if (schema.intent === "lifi.bridge-swap" && field.key === "slippage") return null;
+
                   const isAssetField = field.type === "asset" && (field.key === "assetIn" || field.key === "assetOut");
+
+                  // For lifi, derive per-side chainId (assetIn ← fromChain, assetOut ← toChain)
+                  // and dynamic options (EVM-curated vs SVM-curated). Force the simple ActionPill
+                  // path so SVM-side selection is possible (AssetPicker only handles EVM chainIds).
+                  const isLifi = schema.intent === "lifi.bridge-swap";
+                  let renderField = field;
+                  let derivedChainId: number | undefined =
+                    CHAIN_ID_BY_SLUG[values.chain ?? ""] ?? CHAIN_ID_BY_SLUG["ethereum-sepolia"];
+                  let forceSimple = false;
+                  if (isLifi && isAssetField) {
+                    const sideChain = field.key === "assetIn" ? values.fromChain : values.toChain;
+                    const isSvmSide = !!sideChain?.startsWith("solana:");
+                    const evm = ["ETH", "USDC", "USDT", "MATIC"];
+                    const svm = ["SOL", "USDC", "JitoSOL"];
+                    renderField = { ...field, options: isSvmSide ? svm : evm };
+                    derivedChainId = sideChain?.startsWith("eip155:")
+                      ? parseInt(sideChain.slice(7), 10)
+                      : undefined;
+                    forceSimple = true;
+                  }
+
                   return (
                     <FieldPill
                       key={field.key}
-                      field={field}
+                      field={renderField}
                       value={values[field.key] ?? ""}
                       open={openPillKey === field.key}
                       onOpenChange={(o) => setOpenPillKey(o ? field.key : null)}
                       onChange={(v) => {
                         if (isAssetField) {
-                          setAssetField(field.key === "assetIn" ? "in" : "out", v);
+                          if (isLifi) setField(field.key, v);
+                          else setAssetField(field.key === "assetIn" ? "in" : "out", v);
                         } else {
-                          setField(field.key, v);
+                          // For lifi, when toChain switches between EVM/SVM the current
+                          // assetOut value may no longer be valid (e.g. ETH on Solana).
+                          // Guard by resetting to the curated default for the new family.
+                          if (isLifi && (field.key === "fromChain" || field.key === "toChain")) {
+                            setValues((s) => {
+                              const next = { ...s, [field.key]: v };
+                              const evm = ["ETH", "USDC", "USDT", "MATIC"];
+                              const svm = ["SOL", "USDC", "JitoSOL"];
+                              if (field.key === "fromChain") {
+                                if (!evm.includes(s.assetIn ?? "")) next.assetIn = "USDC";
+                              } else {
+                                const isSvm = v.startsWith("solana:");
+                                const allowed = isSvm ? svm : evm;
+                                if (!allowed.includes(s.assetOut ?? "")) next.assetOut = isSvm ? "SOL" : "USDC";
+                              }
+                              return next;
+                            });
+                          } else {
+                            setField(field.key, v);
+                          }
                         }
                       }}
                       disabled={busy}
-                      chainId={CHAIN_ID_BY_SLUG[values.chain ?? ""] ?? CHAIN_ID_BY_SLUG["ethereum-sepolia"]}
+                      chainId={derivedChainId}
                       address={address}
+                      forceSimplePicker={forceSimple}
                     />
                   );
                 })
@@ -464,6 +518,7 @@ function FieldPill({
   disabled,
   chainId,
   address,
+  forceSimplePicker,
 }: {
   field: IntentField;
   value: string;
@@ -473,6 +528,7 @@ function FieldPill({
   disabled?: boolean;
   chainId?: number;
   address?: `0x${string}` | string;
+  forceSimplePicker?: boolean;
 }) {
   if (field.type === "amount") {
     return (
@@ -490,7 +546,9 @@ function FieldPill({
 
   // Asset fields with >1 option (e.g. swap): use registry-driven AssetPicker.
   // Asset fields with exactly 1 option (e.g. Compound USDC-only): keep native ActionPill dropdown.
-  if (field.type === "asset" && field.options.length !== 1) {
+  // `forceSimplePicker` skips the registry-driven AssetPicker entirely — used by lifi
+  // bridge-swap whose options are curated (EVM-side) or live on Solana (no chainId).
+  if (field.type === "asset" && field.options.length !== 1 && !forceSimplePicker) {
     return (
       <AssetPicker
         chainId={chainId ?? 11155111}
@@ -523,7 +581,7 @@ function FieldPill({
 
 function pillVariantFor(field: IntentField): ActionPillVariant {
   if (field.type === "amount") return "amount";
-  if (field.type === "asset") return "from";
+  if (field.type === "asset") return field.key === "assetOut" ? "to" : "from";
   if (field.type === "select" && field.key.toLowerCase().includes("protocol")) return "protocol";
   if (field.key.toLowerCase().includes("protocol")) return "protocol";
   return "chain";
