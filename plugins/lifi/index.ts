@@ -27,3 +27,5 @@ export const lifi = definePlugin({
 
 export { BridgeSummary, BridgeExecute, BridgeProgress, lifiManifest, lifiIntents };
 export { buildRefreshHandler } from "./refresh";
+export { setServerDeps } from "./_serverClients";
+export type { ServerDeps } from "./_serverClients";

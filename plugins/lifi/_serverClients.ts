@@ -38,3 +38,13 @@ export const defaultDeps: ServerDeps = {
   lifiFetch: stubLifiFetch as unknown as LifiFetchFn,
   evmPublicClientFor: stubEvmPublicClientFor as unknown as EvmPublicClientForFn,
 };
+
+/**
+ * Inject real server-side dependencies. Called by apps/web at startup so the
+ * MCP server (which holds a reference to defaultDeps) resolves real impls
+ * lazily inside its handlers.
+ */
+export function setServerDeps(deps: ServerDeps): void {
+  defaultDeps.lifiFetch = deps.lifiFetch;
+  defaultDeps.evmPublicClientFor = deps.evmPublicClientFor;
+}

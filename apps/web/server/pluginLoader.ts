@@ -2,7 +2,7 @@ import { compoundV3 } from "@wishd/plugin-compound-v3";
 import { uniswap }    from "@wishd/plugin-uniswap";
 import { demoStubs }  from "@wishd/plugin-demo-stubs";
 import { jupiter, buildRefreshHandler as buildJupiterRefreshHandler } from "@wishd/plugin-jupiter";
-import { lifi, buildRefreshHandler as buildLifiRefreshHandler } from "@wishd/plugin-lifi";
+import { lifi, buildRefreshHandler as buildLifiRefreshHandler, setServerDeps as setLifiServerDeps } from "@wishd/plugin-lifi";
 import type { Plugin } from "@wishd/plugin-sdk";
 import { registerPluginTool } from "@wishd/plugin-sdk/routes";
 import { solanaRpcFor } from "./jupiterClients";
@@ -22,7 +22,9 @@ function registerPluginRoutes(): void {
     return JSON.parse(JSON.stringify(prepared, (_k, v) => (typeof v === "bigint" ? v.toString() : v)));
   });
 
-  // Li.Fi refresh handler — inject real server deps (lifiFetch + evmPublicClientFor)
+  // Li.Fi: inject real server deps so the MCP server (createLifiMcp) and the
+  // refresh handler both resolve real impls at call time.
+  setLifiServerDeps({ lifiFetch, evmPublicClientFor });
   const lifiHandler = buildLifiRefreshHandler({ lifiFetch, evmPublicClientFor });
   registerPluginTool("lifi", "refresh_quote", async (body) => {
     return lifiHandler(body);
