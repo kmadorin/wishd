@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import { prepareBridgeSwap } from "../prepare";
+import { fetchLifiStatus } from "../observe";
 import type { ServerDeps } from "../_serverClients";
 
 const prepareInputSchema = {
@@ -63,11 +64,7 @@ export function createLifiMcp(deps: ServerDeps) {
         "Read-only proxy to Li.Fi /status. Returns the current status of a bridge transaction by source txHash. Used for ad-hoc agent inspection of in-flight bridges.",
         statusInputSchema,
         async ({ txHash, fromChain, toChain }) => {
-          // Local stub: calls lifiFetch("/status", ...). Task 11 will rewire to
-          // import fetchLifiStatus from ../observe.ts after that module ships.
-          const status = await deps.lifiFetch("/status", {
-            search: { txHash, fromChain: String(fromChain), toChain: String(toChain) },
-          });
+          const status = await fetchLifiStatus({ txHash, fromChain, toChain, _lifiFetch: deps.lifiFetch });
           return { content: [{ type: "text", text: JSON.stringify(status) }] };
         },
       ),
