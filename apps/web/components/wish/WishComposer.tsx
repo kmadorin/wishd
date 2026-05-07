@@ -340,7 +340,7 @@ export function WishComposer() {
                     const parts = renderSentenceParts(schema);
                     const next = parts[i + 1];
                     const showFlip =
-                      schema.intent === "uniswap.swap" &&
+                      (schema.intent === "uniswap.swap" || schema.intent === "jupiter.swap") &&
                       next &&
                       next.kind === "field" &&
                       (next as { kind: "field"; key: string }).key === "assetOut";

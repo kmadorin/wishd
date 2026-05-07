@@ -24,6 +24,16 @@ const STEP_LABELS: Record<string, { step: string; title: string; sub?: string }>
     title: "execute",
     sub: "native · don't close the tab",
   },
+  "jupiter-swap-summary": {
+    step: "STEP 02",
+    title: "your Solana swap, materialized",
+    sub: "tweak amounts here. AI re-checks live.",
+  },
+  "jupiter-swap-execute": {
+    step: "STEP 03",
+    title: "execute",
+    sub: "Phantom · don't close the tab",
+  },
 };
 
 export function StepStack() {
