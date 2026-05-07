@@ -24,3 +24,18 @@ export async function refreshBridgeSwap(
 ): Promise<LifiBridgePrepared> {
   return quoteAndBuild(input.config, deps);
 }
+
+/**
+ * Returns a request-handler bound to the given `deps`.
+ * Used by apps/web to inject real server dependencies (lifiFetch, evmPublicClientFor)
+ * into the plugin-tool route registered at runtime.
+ */
+export function buildRefreshHandler(
+  deps?: ServerDeps,
+): (body: unknown) => Promise<LifiBridgePrepared> {
+  const resolvedDeps = deps ?? defaultDeps;
+  return async (body) => {
+    const { config } = body as RefreshBridgeSwapInput;
+    return refreshBridgeSwap({ config }, resolvedDeps);
+  };
+}
