@@ -11,7 +11,10 @@
 import type { LiFiFetchOptions } from "../../apps/web/server/lifiClients";
 
 export type LifiFetchFn = (path: string, options: LiFiFetchOptions) => Promise<unknown>;
-export type EvmPublicClientForFn = (caip2: string) => { readContract: (...args: any[]) => Promise<any> };
+export type EvmPublicClientForFn = (caip2: string) => {
+  readContract: (...args: any[]) => Promise<any>;
+  getBalance: (...args: any[]) => Promise<bigint>;
+};
 
 export type ServerDeps = {
   lifiFetch: LifiFetchFn;
