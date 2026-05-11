@@ -14,3 +14,8 @@ apps/web/certificates/
 
 # Superpowers brainstorm artifacts (session HTML/state)
 .superpowers/
+
+# Claude Code local state
+.claude/scheduled_tasks.lock
+.claude/settings.local.json
+.claude/worktrees/

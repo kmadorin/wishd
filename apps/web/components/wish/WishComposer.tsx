@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAccount } from "wagmi";
 import { useWalletConnection } from "@solana/react-hooks";
-import { humanizeChain, isSvmCaip2, renderSentenceParts, type IntentField, type IntentSchema } from "@wishd/plugin-sdk";
+import { humanizeChain, isSvmCaip2, renderSentenceParts, SOLANA_MAINNET, type IntentField, type IntentSchema } from "@wishd/plugin-sdk";
 import { useWorkspace } from "@/store/workspace";
 import { startStream } from "./EventStream";
 import { StepCard } from "@/components/primitives/StepCard";
@@ -21,14 +21,27 @@ import { FlipButton } from "@/components/primitives/FlipButton";
 
 const CHIPS: Array<{ label: string; intent: string; values: Record<string, string> }> = [
   {
-    label: "deposit 10 USDC into Compound on Sepolia",
-    intent: "compound-v3.deposit",
-    values: { amount: "10", asset: "USDC", chain: "ethereum-sepolia" },
+    label: "swap 0.1 SOL for USDC on Solana",
+    intent: "jupiter.swap",
+    values: {
+      amount: "0.1",
+      assetIn: "SOL",
+      assetOut: "USDC",
+      chain: SOLANA_MAINNET,
+      slippage: "0.5%",
+    },
   },
   {
-    label: "withdraw 10 USDC from Compound on Sepolia",
-    intent: "compound-v3.withdraw",
-    values: { amount: "10", asset: "USDC", chain: "ethereum-sepolia" },
+    label: "bridge 10 USDC from Ethereum to SOL on Solana",
+    intent: "lifi.bridge-swap",
+    values: {
+      amount: "10",
+      assetIn: "USDC",
+      fromChain: "eip155:1",
+      assetOut: "SOL",
+      toChain: SOLANA_MAINNET,
+      slippage: "0.5%",
+    },
   },
 ];
 
@@ -486,7 +499,7 @@ export function WishComposer() {
             <input
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="deposit 10 USDC into Compound on Sepolia"
+              placeholder="swap 0.1 SOL for USDC on Solana"
               className="flex-1 rounded-sm bg-surface-2 border border-rule px-3 py-2 font-sans text-ink placeholder:text-ink-3"
               disabled={busy}
             />
